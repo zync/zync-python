@@ -1,4 +1,4 @@
-# ZYNC Python API
+# Zync Python API
 
 ## Install / Setup
 
@@ -10,7 +10,7 @@ Once cloned, create a new file zync-python/config.py. This file should contain o
 ZYNC_URL = "https://<site>.zyncio.com"
 ```
 
-This address will match the address you use to access your ZYNC Web Console.
+This address will match the address you use to access your Zync Web Console.
 
 A sample configuration file "config.py.sample" is included in this repository.
 
@@ -19,17 +19,16 @@ A sample configuration file "config.py.sample" is included in this repository.
 ```python
 import zync
 
-# set up a ZYNC object
+# set up a Zync object
 z = zync.Zync('script_name', 'api_key')
 
-# authenticate with ZYNC
+# authenticate with Zync
 z.login(username='bcipriano', password='password')
 
 # supply some non-default rendering paramters
-job_params = dict( frange = '1-100',
-               chunk_size = 2 )
+job_params = dict(frange = '1-100', chunk_size = 2)
 
-# submit the job to ZYNC
+# submit the job to Zync
 z.submit_job('nuke', '/path/to/nuke_script.nk', 'write_node', job_params)
 ```
 
@@ -40,7 +39,7 @@ This library uses [httplib2](http://code.google.com/p/httplib2/).
 It is included with this API for convenience, though you can also install it with `pip` or `easy_install`:
 
 ```
-easy_install httplib2
+pip install httplib2
 ```
 
 The license for httplib2 is available [here](https://github.com/jcgregorio/httplib2/blob/master/LICENSE).
