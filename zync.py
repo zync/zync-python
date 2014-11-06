@@ -276,7 +276,7 @@ class Zync(HTTPBackend):
     new_job_id = new_job.submit(*args, **kwargs)
     return new_job
 
-  def generate_file_path(file_path):
+  def generate_file_path(self, file_path):
     """
     Returns a hash-embedded scene path for separation from user scenes.
     """
@@ -298,7 +298,7 @@ class Zync(HTTPBackend):
     hash = hashlib.md5(to_hash).hexdigest()[-6:]
 
     # filename will be something like: shotName_comp_v094_37aa20.nk
-    new_filename = '_'.join([old_filename, hash]) + '.' + ext
+    new_filename = '_'.join([old_filename, hash]) + ext
 
     return os.path.join(zync_dir, new_filename)
 
