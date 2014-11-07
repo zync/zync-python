@@ -269,10 +269,6 @@ class Zync(HTTPBackend):
     #
     #   Submit the job and return the output of that method.
     #
-    fp = open('/Users/cipriano/params.out', 'w')
-    fp.write(str(args))
-    fp.write(str(kwargs))
-    fp.close()
     new_job_id = new_job.submit(*args, **kwargs)
     return new_job
 
