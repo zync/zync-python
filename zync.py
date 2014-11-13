@@ -277,7 +277,7 @@ class Zync(HTTPBackend):
     Returns a hash-embedded scene path for separation from user scenes.
     """
     scene_dir, scene_name = os.path.split(file_path)
-    zync_dir = os.path.join(scene_dir, 'zync')
+    zync_dir = os.path.join(scene_dir, '__zync')
 
     if not os.path.exists(zync_dir):
       os.makedirs(zync_dir)
