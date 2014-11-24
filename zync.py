@@ -231,7 +231,7 @@ class Zync(HTTPBackend):
     """
     Get a list of a specific job's details.
     """
-    url = '%s/api/job/%d' % (self.url, job_id)
+    url = '%s/api/jobs/%d' % (self.url, job_id)
     return self.request(url, 'GET')
 
   def get_controller_status(self):
@@ -321,7 +321,7 @@ class Job(object):
     Returns a dictionary of the job details.
     """
     self._check_id()
-    url = '%s/api/job/%d' % (self.zync.url, self.id)
+    url = '%s/api/jobs/%d' % (self.zync.url, self.id)
     return self.zync.request(url, 'GET')
 
   def set_status(self, status):
@@ -330,7 +330,7 @@ class Job(object):
     job controls are initiated.
     """
     self._check_id()
-    url = '%s/api/job/%d' % (self.zync.url,)
+    url = '%s/api/jobs/%d' % (self.zync.url,)
     data = {'status': status}
     return self.zync.request(url, 'POST', data)
 
@@ -363,14 +363,6 @@ class Job(object):
     Requeues the given job.
     """
     return self.set_status('queued')
-
-  def retry(self):
-    """
-    Retries the errored tasks for the given job ID.
-    """
-    self._check_id()
-    url = '%s/api/retry_errors/%d' % (self.zync.url, self.id)
-    return self.zync.request(url, 'POST')
 
   def get_preflight_checks(self):
     """
@@ -448,10 +440,6 @@ class Job(object):
     Submit a new job to ZYNC.
     """
     #
-    #   Build the base URL and headers.
-    #
-    url = '%s/api/job' % (self.zync.url,)
-    #
     #   The submit_params dict will store most job options. Build 
     #   some defaults in; most of these will be overridden by the
     #   submission script.
@@ -476,7 +464,7 @@ class Job(object):
     #
     if 'scene_info' in data:
       data['scene_info'] = json.dumps(data['scene_info'])
-    url = '%s/api/job' % (self.zync.url,)
+    url = '%s/api/jobs' % (self.zync.url,)
     self.job_id = self.zync.request(url, 'POST', data)
     return self.job_id
  
