@@ -115,6 +115,7 @@ class HTTPBackend(object):
 
   def request(self, url, operation, data={}, headers={}):
     headers = self.set_cookie(headers=headers)
+    headers['X-Zync-Header'] = '1'
     if operation == 'GET':
       if len(data) > 0:
         url += '?%s' % (urlencode(data),) 
