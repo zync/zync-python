@@ -26,19 +26,17 @@ class ZyncConnectionError(Exception):
 class ZyncPreflightError(Exception):
     pass
 
-config_path = os.path.dirname(__file__)
-if config_path != '':
-    config_path += '/'
-config_path += 'config.py'
+config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 
+  'config.py')
 if not os.path.exists(config_path):
-    raise ZyncError('Could not locate config.py, please create.')
+  raise ZyncError('Could not locate config.py, please create.')
 from config import *
 
 required_config = ['ZYNC_URL']
 
 for key in required_config:
-    if not key in globals():
-        raise Exception('config.py must define a value for %s.' % (key,))
+  if not key in globals():
+    raise ZyncError('config.py must define a value for %s.' % (key,))
 
 class HTTPBackend(object):
   """
@@ -47,22 +45,26 @@ class HTTPBackend(object):
   def __init__(self, script_name, token, timeout=10.0):
     """
     """
-    self.url = ZYNC_URL
-    self.http = httplib2.Http(timeout=timeout) 
     self.script_name = script_name
     self.token = token
+    self.url = ZYNC_URL
+    self.timeout = timeout
     if self.up():
       # create a session with token-level permissions
       self.cookie = self.__auth(self.script_name, self.token)
     else:
       raise ZyncConnectionError('ZYNC is down at URL: %s' % (self.url,))
 
+  def __get_http(self):
+    return httplib2.Http(timeout=self.timeout) 
+
   def up(self):
     """
     Checks for the site to be available.
     """
+    http = self.__get_http()
     try:
-      response, content = self.http.request(self.url, 'GET')
+      response, content = http.request(self.url, 'GET')
     except httplib2.ServerNotFoundError:
       return False
     except AttributeError:
@@ -86,6 +88,7 @@ class HTTPBackend(object):
     """
     Authenticate with Zync.
     """
+    http = self.__get_http()
     url = '%s/api/validate' % (self.url,)
     args = {
       'script_name': script_name,
@@ -96,7 +99,7 @@ class HTTPBackend(object):
       args['pass'] = password
     data = urlencode(args)
     headers = {'Content-Type': 'application/x-www-form-urlencoded'}
-    response, content = self.http.request(url, 'POST', data, headers=headers)
+    response, content = http.request(url, 'POST', data, headers=headers)
     if response['status'] == '200':
       return response['set-cookie']
     else:
@@ -114,16 +117,17 @@ class HTTPBackend(object):
       raise ZyncConnectionError('ZYNC is down at URL: %s' % (self.url,))
 
   def request(self, url, operation, data={}, headers={}):
+    http = self.__get_http()
     headers = self.set_cookie(headers=headers)
     headers['X-Zync-Header'] = '1'
     if operation == 'GET':
       if len(data) > 0:
         url += '?%s' % (urlencode(data),) 
-      resp, content = self.http.request(url, operation, headers=headers)
+      resp, content = http.request(url, operation, headers=headers)
     else:
       if 'Content-Type' not in headers:
         headers['Content-Type'] = 'application/x-www-form-urlencoded'
-      resp, content = self.http.request(url, operation, urlencode(data), headers=headers)
+      resp, content = http.request(url, operation, urlencode(data), headers=headers)
     if resp['status'] == '200':
       try:
         return json.loads(content)
