@@ -158,7 +158,6 @@ class Zync(HTTPBackend):
     self.FEATURES = self.get_enabled_features()
     self.JOB_SUBTYPES = self.get_job_subtypes()
     self.MAYA_RENDERERS = self.get_maya_renderers()
-    self.DEFAULT_INSTANCE_TYPE = 'n1-standard-8'
 
   def get_config(self, var=None):
     """
@@ -175,6 +174,18 @@ class Zync(HTTPBackend):
       return result[var]
     else:
       return None
+
+  def compare_instance_types(self, type_a, type_b):
+    obj_a = self.INSTANCE_TYPES[type_a]
+    obj_b = self.INSTANCE_TYPES[type_b]
+    if 'order' in obj_a and 'order' in obj_b:
+      return obj_a['order'] - obj_b['order']
+    elif 'order' in obj_a and 'order' not in obj_b:
+      return 1
+    elif 'order' not in obj_a and 'order' in obj_b:
+      return -1
+    else:
+      return 0
 
   def get_instance_types(self):
     """
@@ -450,7 +461,6 @@ class Job(object):
     #   submission script.
     #
     data = {}
-    data['instance_type'] = self.zync.DEFAULT_INSTANCE_TYPE
     data['upload_only'] = 0
     data['start_new_slots'] = 1
     data['chunk_size'] = 1
@@ -696,6 +706,4 @@ class ArnoldJob(Job):
     #   Fire Job.submit() to submit the job.
     #
     return super(ArnoldJob, self).submit(data)
-
-# dummy comment for testing code rollout
 
