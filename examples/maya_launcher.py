@@ -57,18 +57,9 @@ params = {
     #
     'skip_check': 0, 
     #
-    #   notify_complete = Whether to send out a notification when the job completes.
-    #
-    'notify_complete': 0, 
-    #
-    #   start_new_slots = Whether the job is allowed to start new slots. 0 = will only
-    #                     use already-running slots, 1 = will start new ones as needed.
-    #
-    'start_new_slots': 1,
-    #
     #   instance_type = The instance type to use on your job.
     #
-    'instance_type': 'ZYNC16', 
+    'instance_type': 'n1-standard-16', 
     #
     #   frange = The frame range to render.
     #
@@ -83,7 +74,7 @@ params = {
     #
     'chunk_size': 10, 
     #
-    #   renderer = The renderer to use.
+    #   renderer = The renderer to use, e.g. "vray" or "arnold".
     #
     'renderer': 'vray', 
     #
