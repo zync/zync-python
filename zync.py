@@ -158,6 +158,7 @@ class Zync(HTTPBackend):
     self.FEATURES = self.get_enabled_features()
     self.JOB_SUBTYPES = self.get_job_subtypes()
     self.MAYA_RENDERERS = self.get_maya_renderers()
+    self.PRICING = self.get_pricing()
 
   def get_config(self, var=None):
     """
@@ -313,6 +314,11 @@ class Zync(HTTPBackend):
     new_filename = '_'.join([old_filename, hash]) + ext
 
     return os.path.join(zync_dir, new_filename)
+
+  def get_pricing(self):
+    url = ('http://zync.cloudpricingcalculator.appspot.com' +
+      '/static/data/pricelist.json') 
+    return self.request(url, 'GET')
 
 class Job(object):
   """
