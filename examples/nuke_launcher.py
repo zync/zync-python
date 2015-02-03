@@ -42,19 +42,10 @@ render_params = {
     #
     'num_instances': 1,
     #
-    #   start_new_slots = Whether the job is allowed to start new slots. 0 = will only
-    #                     use already-running slots, 1 = will start new ones as needed.
-    #
-    'start_new_slots': 1,
-    #
     #   skip_check = Whether to skip the file check / upload. Only use this if you're
     #                absolutely sure all files have already been uploaded to ZYNC.
     #
     'skip_check': 0,
-    #
-    #   notify_complete = Whether to send out a notification when the job completes.
-    #
-    'notify_complete': 0,
     #
     #   upload_only = Whether to run an "upload-only" job. 0 will perform a full render
     #                 render job, 1 will just upload files - no rendering will take place.
@@ -67,11 +58,11 @@ render_params = {
     #
     #   instance_type = The instance type to use on your job.
     #
-    'instance_type': 'ZYNC8',
+    'instance_type': 'n1-standard-8',
     #
     #   frange = The frame range to render.
     #
-    'frange': '0-10',
+    'frange': '1-10',
     #
     #   step = The frame step, i.e. a step = 1 will render every frame, 2 will render
     #          every other frame, etc. Using step > 1 will set your Chunk Size to 1.
@@ -90,7 +81,7 @@ render_params = {
 #
 #   Launch the job. submit_job() returns the ID of the new job.
 #
-new_job_id = z.submit_job('nuke', script_path, write_node, render_params)
+new_job = z.submit_job('nuke', script_path, write_node, render_params)
 
-print 'Job Launched! New Job ID: %d' % (str(new_job_id),)
+print 'Job launched.'
 
