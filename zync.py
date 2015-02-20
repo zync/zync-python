@@ -272,6 +272,8 @@ class Zync(HTTPBackend):
       JobSelect = MayaJob
     elif job_type == 'arnold':
       JobSelect = ArnoldJob
+    elif job_type == 'vray':
+      JobSelect = VrayJob
     else:
       raise ZyncError('Unrecognized job_type "%s".' % (job_type,))
     #
@@ -713,3 +715,57 @@ class ArnoldJob(Job):
     #
     return super(ArnoldJob, self).submit(data)
 
+class VrayJob(Job):
+  """
+  Encapsulates Vray-specific job functions.
+  """
+  def __init__(self, *args, **kwargs):
+    #
+    #   Just run Job.__init__(), and set the job_type.
+    #
+    super(VrayJob, self).__init__(*args, **kwargs)
+    self.job_type = 'vray'
+
+  def submit(self, file, params={}):
+    """
+    Submits an Vray job to ZYNC.
+
+    Vray-specific submit parameters. * == required.
+
+    * output_dir: The directory to store output frames in.
+
+    * output_filename: The name of the output files. Can contain subdirectories.
+
+    * xres: The output image x resolution.
+
+    * yres: The output image y resolution.
+
+    * scene_info: A dict of information about your Arnold scene to help
+        ZYNC prepare its environment properly.
+
+            Required:
+
+                extension: The file extension of your rendered frames.
+
+                vray_version: The Arnold version in use.
+
+                padding: The frame padding in your scene.
+
+            Optional:
+
+                files: A list of files required to render your scene. This is not
+                    required as ZYNC will scan your scene to determine a file list.
+                    But, you can use this element to force extra elements to be added.
+
+    """
+    #
+    #   Build default params, and update with what's been passed in.
+    #
+    data = {}
+    data['job_type'] = 'vray'
+    data['file_path'] = file
+    data.update(params)
+    #
+    #   Fire Job.submit() to submit the job.
+    #
+    return super(VrayJob, self).submit(data)
