@@ -675,33 +675,31 @@ class ArnoldJob(Job):
     Arnold-specific submit parameters. * == required.
 
     NOTE: the "file" param can contain a wildcard to render multiple Arnold
-        scenes as part of the same job. E.g. "/path/to/render_scene.*.ass"
-
-    * out_path: The output path to which all rendered frames will be downloaded.
-
-    * camera: The name of the render camera.
+      scenes as part of the same job. E.g. "/path/to/render_scene.*.ass"
 
     * xres: The output image x resolution.
 
     * yres: The output image y resolution.
 
+    * output_dir: The directory into which to download all output frames.
+
+    * output_filename: The name of the output files. Can be a path, i.e.
+        can include slashes. 
+
     * scene_info: A dict of information about your Arnold scene to help
         ZYNC prepare its environment properly.
 
-            Required:
+          Required:
 
-                extension: The file extension of your rendered frames.
+            arnold_version: The Arnold version in use.
 
-                arnold_version: The Arnold version in use.
+            padding: The frame padding in your scene.
 
-                padding: The frame padding in your scene.
+          Optional:
 
-            Optional:
-
-                files: A list of files required to render your scene. This is not
-                    required as ZYNC will scan your scene to determine a file list.
-                    But, you can use this element to force extra elements to be added.
-
+            files: A list of files required to render your scene. This is not
+              required as ZYNC will scan your scene to determine a file list.
+              But, you can use this element to force extra elements to be added.
     """
     #
     #   Build default params, and update with what's been passed in.
@@ -732,6 +730,10 @@ class VrayJob(Job):
 
     Vray-specific submit parameters. * == required.
 
+    * frange: The frame range to render.
+
+    * chunk_size: The number of frames to render per task.
+
     * output_dir: The directory to store output frames in.
 
     * output_filename: The name of the output files. Can contain subdirectories.
@@ -743,20 +745,15 @@ class VrayJob(Job):
     * scene_info: A dict of information about your Arnold scene to help
         ZYNC prepare its environment properly.
 
-            Required:
+          Required:
 
-                extension: The file extension of your rendered frames.
+            vray_version: The Arnold version in use.
 
-                vray_version: The Arnold version in use.
+            padding: The frame padding in your scene.
 
-                padding: The frame padding in your scene.
-
-            Optional:
-
-                files: A list of files required to render your scene. This is not
-                    required as ZYNC will scan your scene to determine a file list.
-                    But, you can use this element to force extra elements to be added.
-
+            files: A list of files required to render your scene. This is not
+              required as ZYNC will scan your scene to determine a file list.
+              But, you can use this element to force extra elements to be added.
     """
     #
     #   Build default params, and update with what's been passed in.
@@ -769,3 +766,4 @@ class VrayJob(Job):
     #   Fire Job.submit() to submit the job.
     #
     return super(VrayJob, self).submit(data)
+
