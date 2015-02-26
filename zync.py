@@ -747,7 +747,7 @@ class VrayJob(Job):
 
           Required:
 
-            vray_version: The Arnold version in use.
+            vray_version: The Vray version in use.
 
             padding: The frame padding in your scene.
 
