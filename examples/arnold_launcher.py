@@ -72,9 +72,10 @@ params = {
   'output_dir': '/path/to/output/folder',
   #
   # output_filename = How output frames should be named. Can contain slashes
-  #   to create subdirectories.
+  #   to create subdirectories. Use a double dot '..' to indicate where the
+  #   frame number should be inserted.
   #
-  'output_filename': 'subdirectory/for/frames.png',
+  'output_filename': 'subdirectory/for/frames..png',
   #
   # xres = The output image x resolution.
   #
