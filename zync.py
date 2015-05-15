@@ -288,7 +288,7 @@ class Zync(HTTPBackend):
     #
     #   Submit the job and return the output of that method.
     #
-    new_job_id = new_job.submit(*args, **kwargs)
+    new_job.submit(*args, **kwargs)
     return new_job
 
   def generate_file_path(self, file_path):
@@ -462,6 +462,9 @@ class Job(object):
   def submit(self, params):
     """
     Submit a new job to ZYNC.
+    
+    Returns:
+      str, ID of the submitted job.
     """
     #
     #   The submit_params dict will store most job options. Build 
@@ -488,8 +491,8 @@ class Job(object):
     if 'scene_info' in data:
       data['scene_info'] = json.dumps(data['scene_info'])
     url = '%s/api/jobs' % (self.zync.url,)
-    self.job_id = self.zync.request(url, 'POST', data)
-    return self.job_id
+    self.id = self.zync.request(url, 'POST', data)
+    return self.id
  
 class NukeJob(Job):
   """
