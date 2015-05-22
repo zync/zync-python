@@ -42,7 +42,7 @@ class HTTPBackend(object):
   """
   Methods for talking to services over HTTP.
   """
-  def __init__(self, script_name, token, timeout=10.0):
+  def __init__(self, script_name, token, timeout=30.0):
     """
     """
     self.script_name = script_name
@@ -142,7 +142,7 @@ class Zync(HTTPBackend):
   and token to use most API methods.
   """
 
-  def __init__(self, script_name, token, timeout=10.0, application=None):
+  def __init__(self, script_name, token, timeout=30.0, application=None):
     """
     Create a Zync object, for interacting with the Zync service.
     """
