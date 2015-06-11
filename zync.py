@@ -42,13 +42,19 @@ class HTTPBackend(object):
   """
   Methods for talking to services over HTTP.
   """
-  def __init__(self, script_name, token, timeout=30.0):
+  def __init__(self, script_name, token, timeout=30.0, 
+               disable_ssl_certificate_validation=False):
     """
+    
+    Args:
+      disable_ssl_certificate_validation: bool, if True, will disable SSL
+        certificate validation (for Zync integration tests).
     """
     self.script_name = script_name
     self.token = token
     self.url = ZYNC_URL
     self.timeout = timeout
+    self.disable_ssl_certificate_validation = disable_ssl_certificate_validation
     if self.up():
       # create a session with token-level permissions
       self.cookie = self.__auth(self.script_name, self.token)
@@ -56,7 +62,9 @@ class HTTPBackend(object):
       raise ZyncConnectionError('ZYNC is down at URL: %s' % (self.url,))
 
   def __get_http(self):
-    return httplib2.Http(timeout=self.timeout) 
+    return httplib2.Http(
+        timeout=self.timeout, 
+        disable_ssl_certificate_validation=self.disable_ssl_certificate_validation) 
 
   def up(self):
     """
@@ -142,14 +150,21 @@ class Zync(HTTPBackend):
   and token to use most API methods.
   """
 
-  def __init__(self, script_name, token, timeout=30.0, application=None):
+  def __init__(self, script_name, token, timeout=30.0, application=None, 
+               disable_ssl_certificate_validation=False):
     """
     Create a Zync object, for interacting with the Zync service.
+    
+    Args:
+      disable_ssl_certificate_validation: bool, if True, will disable SSL
+        certificate validation (for Zync integration tests).
     """
     #
     #   Call the HTTPBackend.__init__() method.
     #
-    super(Zync, self).__init__(script_name, token, timeout=timeout)
+    super(Zync, self).__init__(
+        script_name, token, timeout=timeout, 
+        disable_ssl_certificate_validation=disable_ssl_certificate_validation)
     #
     #   Initialize class variables by pulling various info from ZYNC.
     #
