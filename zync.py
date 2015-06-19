@@ -4,6 +4,7 @@ Zync Python API
 A Python wrapper around the Zync HTTP API.
 """
 
+import argparse
 import hashlib
 import json
 import os
@@ -12,7 +13,16 @@ import sys
 import time
 from urllib import urlencode
 
-import zync_lib.httplib2 as httplib2
+current_dir = os.path.dirname(os.path.abspath(__file__)) 
+sys.path.insert(0, os.path.join(current_dir, 'zync_lib'))
+import httplib2
+#import zync_lib.oauth2client as oauth2client 
+#import zync_lib.oauth2client.client 
+#import zync_lib.oauth2client.file
+#import zync_lib.oauth2client.tools
+import oauth2client.client 
+import oauth2client.file
+import oauth2client.tools
 
 class ZyncAuthenticationError(Exception):
     pass
@@ -26,11 +36,13 @@ class ZyncConnectionError(Exception):
 class ZyncPreflightError(Exception):
     pass
 
-config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 
-  'config.py')
+config_path = os.path.join(current_dir, 'config.py')
 if not os.path.exists(config_path):
   raise ZyncError('Could not locate config.py, please create.')
 from config import *
+
+CLIENT_SECRET = os.path.join(current_dir, 'client_secret.json')
+OAUTH2_STORAGE = '/Users/cipriano/Desktop/oauth2.dat'
 
 required_config = ['ZYNC_URL']
 
@@ -92,7 +104,8 @@ class HTTPBackend(object):
     else:
       raise ZyncAuthenticationError('Zync authentication failed.')
 
-  def __auth(self, script_name, token, username=None, password=None):
+  def __auth(self, script_name, token, username=None, password=None, 
+    access_token=None, email=None):
     """
     Authenticate with Zync.
     """
@@ -102,7 +115,10 @@ class HTTPBackend(object):
       'script_name': script_name,
       'token': token
     }
-    if username != None:
+    if access_token is not None:
+      args['access_token'] = access_token
+      args['email'] = email
+    elif username != None:
       args['user'] = username
       args['pass'] = password
     data = urlencode(args)
@@ -121,6 +137,52 @@ class HTTPBackend(object):
     """
     if self.up():
       self.cookie = self.__auth(self.script_name, self.token, username=username, password=password)
+    else:
+      raise ZyncConnectionError('ZYNC is down at URL: %s' % (self.url,))
+
+  def __google_api(self, api_path, params={}):
+    http = httplib2.Http()
+    headers = {'Authorization': 'OAuth %s' % self.access_token} 
+    url = 'https://www.googleapis.com/%s' % api_path
+    if params:
+      url += '?%s' % urlencode(params)
+    resp, content = http.request(url, 'GET', headers=headers)
+    if resp.status == 200:
+      return content
+    else:
+      raise ZyncError(content)
+
+  def login_with_google(self):
+    if self.up():
+      flow = oauth2client.client.flow_from_clientsecrets(
+        CLIENT_SECRET,
+        scope=(
+          'https://www.googleapis.com/auth/userinfo.profile '
+          'https://www.googleapis.com/auth/userinfo.email'
+        )
+      )
+      storage = oauth2client.file.Storage(OAUTH2_STORAGE)
+      parser = argparse.ArgumentParser(parents=[oauth2client.tools.argparser])
+      flags = parser.parse_args([])
+      credentials = storage.get()
+      if credentials is None or credentials.invalid:
+        credentials = oauth2client.tools.run_flow(flow, storage, flags)
+      self.access_token = credentials.access_token
+      print 'flow complete'
+      print self.access_token
+      '''
+      userinfo = json.loads(self.__google_api('plus/v1/people/me'))
+      primary_email = None
+      for email in userinfo['emails']:
+        if email['type'] == 'account':
+          primary_email = email['value']
+          break
+      if not primary_email:
+        raise ZyncAuthenticationError('Could not locate user email address.')
+      '''
+      primary_email = 'cipriano@google.com'
+      self.cookie = self.__auth(self.script_name, self.token, access_token=self.access_token,
+        email=primary_email) 
     else:
       raise ZyncConnectionError('ZYNC is down at URL: %s' % (self.url,))
 
