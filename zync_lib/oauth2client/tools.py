@@ -31,8 +31,8 @@ import sys
 import urlparse
 import webbrowser
 
-from oauth2client import client
-from oauth2client import util
+from zync_lib.oauth2client import client
+from zync_lib.oauth2client import util
 
 _CLIENT_SECRETS_MESSAGE = """WARNING: Please configure OAuth 2.0
 

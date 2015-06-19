@@ -23,8 +23,8 @@ credentials.
 import os
 import threading
 
-from oauth2client.client import Credentials
-from oauth2client.client import Storage as BaseStorage
+from zync_lib.oauth2client.client import Credentials
+from zync_lib.oauth2client.client import Storage as BaseStorage
 
 
 class CredentialsFileSymbolicLinkError(Exception):

@@ -32,12 +32,12 @@ import urllib
 import urlparse
 
 import zync_lib.httplib2 as httplib2
-from oauth2client import clientsecrets
-from oauth2client import GOOGLE_AUTH_URI
-from oauth2client import GOOGLE_DEVICE_URI
-from oauth2client import GOOGLE_REVOKE_URI
-from oauth2client import GOOGLE_TOKEN_URI
-from oauth2client import util
+from zync_lib.oauth2client import clientsecrets
+from zync_lib.oauth2client import GOOGLE_AUTH_URI
+from zync_lib.oauth2client import GOOGLE_DEVICE_URI
+from zync_lib.oauth2client import GOOGLE_REVOKE_URI
+from zync_lib.oauth2client import GOOGLE_TOKEN_URI
+from zync_lib.oauth2client import util
 
 HAS_OPENSSL = False
 HAS_CRYPTO = False

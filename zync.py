@@ -13,16 +13,8 @@ import sys
 import time
 from urllib import urlencode
 
-current_dir = os.path.dirname(os.path.abspath(__file__)) 
-sys.path.insert(0, os.path.join(current_dir, 'zync_lib'))
-import httplib2
-#import zync_lib.oauth2client as oauth2client 
-#import zync_lib.oauth2client.client 
-#import zync_lib.oauth2client.file
-#import zync_lib.oauth2client.tools
-import oauth2client.client 
-import oauth2client.file
-import oauth2client.tools
+import zync_lib.httplib2 as httplib2
+import zync_lib.oauth2client as oauth2client 
 
 class ZyncAuthenticationError(Exception):
     pass
@@ -36,19 +28,32 @@ class ZyncConnectionError(Exception):
 class ZyncPreflightError(Exception):
     pass
 
+current_dir = os.path.dirname(os.path.abspath(__file__)) 
 config_path = os.path.join(current_dir, 'config.py')
 if not os.path.exists(config_path):
   raise ZyncError('Could not locate config.py, please create.')
 from config import *
-
-CLIENT_SECRET = os.path.join(current_dir, 'client_secret.json')
-OAUTH2_STORAGE = '/Users/cipriano/Desktop/oauth2.dat'
 
 required_config = ['ZYNC_URL']
 
 for key in required_config:
   if not key in globals():
     raise ZyncError('config.py must define a value for %s.' % (key,))
+
+def __get_config_dir():
+  config_dir = os.path.expanduser('~')
+  if platform.system() == 'win32':
+    config_dir = os.path.join(config_dir, 'AppData', 'Roaming', 'Zync')
+  elif platform.system() == 'darwin':
+    config_dir = os.path.join(config_dir, 'Library', 'Application Support', 'Zync')
+  else:
+    config_dir = os.path.join(config_dir, '.zync')
+  if not os.path.exists(config_dir):
+    os.makedirs(config_dir)
+  return config_dir
+
+CLIENT_SECRET = os.path.join(current_dir, 'client_secret.json')
+OAUTH2_STORAGE = os.path.join(__get_config_dir(), 'oauth2.dat')
 
 class HTTPBackend(object):
   """
@@ -168,9 +173,6 @@ class HTTPBackend(object):
       if credentials is None or credentials.invalid:
         credentials = oauth2client.tools.run_flow(flow, storage, flags)
       self.access_token = credentials.access_token
-      print 'flow complete'
-      print self.access_token
-      '''
       userinfo = json.loads(self.__google_api('plus/v1/people/me'))
       primary_email = None
       for email in userinfo['emails']:
@@ -179,8 +181,6 @@ class HTTPBackend(object):
           break
       if not primary_email:
         raise ZyncAuthenticationError('Could not locate user email address.')
-      '''
-      primary_email = 'cipriano@google.com'
       self.cookie = self.__auth(self.script_name, self.token, access_token=self.access_token,
         email=primary_email) 
     else:
