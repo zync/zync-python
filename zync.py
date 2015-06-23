@@ -42,9 +42,9 @@ for key in required_config:
 
 def __get_config_dir():
   config_dir = os.path.expanduser('~')
-  if platform.system() == 'win32':
+  if platform.system().lower() == 'win32':
     config_dir = os.path.join(config_dir, 'AppData', 'Roaming', 'Zync')
-  elif platform.system() == 'darwin':
+  elif platform.system().lower() == 'darwin':
     config_dir = os.path.join(config_dir, 'Library', 'Application Support', 'Zync')
   else:
     config_dir = os.path.join(config_dir, '.zync')
@@ -183,6 +183,7 @@ class HTTPBackend(object):
         raise ZyncAuthenticationError('Could not locate user email address.')
       self.cookie = self.__auth(self.script_name, self.token, access_token=self.access_token,
         email=primary_email) 
+      return primary_email
     else:
       raise ZyncConnectionError('ZYNC is down at URL: %s' % (self.url,))
 
