@@ -159,19 +159,20 @@ class HTTPBackend(object):
 
   def login_with_google(self):
     if self.up():
-      flow = oauth2client.client.flow_from_clientsecrets(
-        CLIENT_SECRET,
-        scope=(
-          'https://www.googleapis.com/auth/userinfo.profile '
-          'https://www.googleapis.com/auth/userinfo.email'
-        )
-      )
       storage = oauth2client.file.Storage(OAUTH2_STORAGE)
-      parser = argparse.ArgumentParser(parents=[oauth2client.tools.argparser])
-      flags = parser.parse_args([])
       credentials = storage.get()
       if credentials is None or credentials.invalid:
+        flow = oauth2client.client.flow_from_clientsecrets(
+          CLIENT_SECRET,
+          scope=(
+            'https://www.googleapis.com/auth/userinfo.profile '
+            'https://www.googleapis.com/auth/userinfo.email'
+          )
+        )
+        parser = argparse.ArgumentParser(parents=[oauth2client.tools.argparser])
+        flags = parser.parse_args([])
         credentials = oauth2client.tools.run_flow(flow, storage, flags)
+      credentials.refresh(httplib2.Http())
       self.access_token = credentials.access_token
       userinfo = json.loads(self.__google_api('plus/v1/people/me'))
       primary_email = None
