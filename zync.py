@@ -41,6 +41,12 @@ for key in required_config:
     raise ZyncError('config.py must define a value for %s.' % (key,))
 
 def __get_config_dir():
+  """Return the directory in which Zync configuration should be stored.
+  Varies depending on current system Operating System conventioned.
+
+  Returns:
+    str, absolute path to the Zync config directory
+  """
   config_dir = os.path.expanduser('~')
   if platform.system().lower() == 'win32':
     config_dir = os.path.join(config_dir, 'AppData', 'Roaming', 'Zync')
@@ -72,8 +78,16 @@ class HTTPBackend(object):
     self.url = ZYNC_URL
     self.timeout = timeout
     self.disable_ssl_certificate_validation = disable_ssl_certificate_validation
+    # access_token holds the user's current OAuth access token. Not used
+    # if using a standard Zync login rather than a Google OAuth login.
+    self.access_token = None
     if self.up():
-      # create a session with token-level permissions
+      # cookie holds the current session cookie which is needed to 
+      # make authenticated requests to the Zync REST API. This creates
+      # a session with script-level permissions, which allow most read-only
+      # functionality. A subsequent call to __auth() must be made to elevate
+      # permissions to user-level, which will allow write access for operations
+      # such as submitting jobs.
       self.cookie = self.__auth(self.script_name, self.token)
     else:
       raise ZyncConnectionError('ZYNC is down at URL: %s' % (self.url,))
@@ -146,6 +160,21 @@ class HTTPBackend(object):
       raise ZyncConnectionError('ZYNC is down at URL: %s' % (self.url,))
 
   def __google_api(self, api_path, params={}):
+    """Make a call to a Google API.
+
+    Args:
+      api_path: str, the API path to call, i.e. the tail of the
+        URL with no hostname
+      params: dict, key-value pairs of any parameters to be passed with 
+        the GET request as part of the URL
+
+    Returns:
+      str, the response body
+
+    Raises:
+      ZyncError, if the response contains anything other than a
+        200 status code.
+    """
     http = httplib2.Http()
     headers = {'Authorization': 'OAuth %s' % self.access_token} 
     url = 'https://www.googleapis.com/%s' % api_path
@@ -158,6 +187,17 @@ class HTTPBackend(object):
       raise ZyncError(content)
 
   def login_with_google(self):
+    """Performs the Google OAuth flow, which will open the user's browser
+    for authorization if necessary, then retrieves the user's account info
+    and authorized with Zync.
+
+    Returns:
+      str, the user's email address
+
+    Raises:
+      ZyncAuthenticationError if user info is invalid or the login fails
+      ZyncConnectionError if the Zync site is down
+    """
     if self.up():
       storage = oauth2client.file.Storage(OAUTH2_STORAGE)
       credentials = storage.get()
@@ -181,7 +221,8 @@ class HTTPBackend(object):
           primary_email = email['value']
           break
       if not primary_email:
-        raise ZyncAuthenticationError('Could not locate user email address.')
+        raise ZyncAuthenticationError('Could not locate user email address. ' +
+          'Emails found: %s' % str(userinfo['emails']))
       self.cookie = self.__auth(self.script_name, self.token, access_token=self.access_token,
         email=primary_email) 
       return primary_email
