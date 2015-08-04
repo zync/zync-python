@@ -28,11 +28,15 @@ class ZyncConnectionError(Exception):
 class ZyncPreflightError(Exception):
     pass
 
-current_dir = os.path.dirname(os.path.abspath(__file__)) 
-config_path = os.path.join(current_dir, 'config.py')
-if not os.path.exists(config_path):
-  raise ZyncError('Could not locate config.py, please create.')
-from config import *
+if os.environ.get('ZYNC_URL'):
+  ZYNC_URL = os.environ.get('ZYNC_URL')
+else:
+  # FIXME: maintained for backwards compatibility
+  current_dir = os.path.dirname(os.path.abspath(__file__))
+  config_path = os.path.join(current_dir, 'config.py')
+  if not os.path.exists(config_path):
+    raise ZyncError('Could not locate config.py, please create.')
+  from config import *
 
 required_config = ['ZYNC_URL']
 
