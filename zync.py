@@ -66,16 +66,22 @@ class HTTPBackend(object):
   Methods for talking to services over HTTP.
   """
   def __init__(self, script_name, token, timeout=30.0, 
-               disable_ssl_certificate_validation=False):
+               disable_ssl_certificate_validation=False,
+               url=None):
     """
     
     Args:
       disable_ssl_certificate_validation: bool, if True, will disable SSL
         certificate validation (for Zync integration tests).
+      script_name: str, the Zync API script name
+      token: str, token of the API script
+      url: str, URL to the site.
     """
     self.script_name = script_name
     self.token = token
-    self.url = ZYNC_URL
+    if not url:
+      url = ZYNC_URL
+    self.url = url
     self.timeout = timeout
     self.disable_ssl_certificate_validation = disable_ssl_certificate_validation
     # access_token holds the user's current OAuth access token. Not used
@@ -189,7 +195,7 @@ class HTTPBackend(object):
   def login_with_google(self):
     """Performs the Google OAuth flow, which will open the user's browser
     for authorization if necessary, then retrieves the user's account info
-    and authorized with Zync.
+    and authorizes with Zync.
 
     Returns:
       str, the user's email address
@@ -213,7 +219,6 @@ class HTTPBackend(object):
         flags = parser.parse_args([])
         credentials = oauth2client.tools.run_flow(flow, storage, flags)
       credentials.refresh(httplib2.Http())
-      self.access_token = credentials.access_token
       userinfo = json.loads(self.__google_api('plus/v1/people/me'))
       primary_email = None
       for email in userinfo['emails']:
@@ -223,11 +228,25 @@ class HTTPBackend(object):
       if not primary_email:
         raise ZyncAuthenticationError('Could not locate user email address. ' +
           'Emails found: %s' % str(userinfo['emails']))
-      self.cookie = self.__auth(self.script_name, self.token, access_token=self.access_token,
-        email=primary_email) 
+      self._save_oauth_credentials(
+          credentials.access_token, self.script_name, self.token, primary_email)
       return primary_email
     else:
       raise ZyncConnectionError('ZYNC is down at URL: %s' % (self.url,))
+    
+  def _save_oauth_credentials(self, access_token, script_name, token, email):
+    """Saves credentials for oauth authentication.
+    
+    Used by Zync integration tests.
+    
+    Args:
+      access_token: str, the OAuth access token.
+      script_name: str, the Zync API script name
+      token: str, token of the API script
+      email: str, email address of the user authenticating with oauth
+    """
+    self.access_token = access_token
+    self.cookie = self.__auth(script_name, token, access_token=access_token, email=email)
 
   def request(self, url, operation, data={}, headers={}):
     http = self.__get_http()
@@ -256,20 +275,24 @@ class Zync(HTTPBackend):
   """
 
   def __init__(self, script_name, token, timeout=30.0, application=None, 
-               disable_ssl_certificate_validation=False):
+               disable_ssl_certificate_validation=False, url=None):
     """
     Create a Zync object, for interacting with the Zync service.
     
     Args:
       disable_ssl_certificate_validation: bool, if True, will disable SSL
         certificate validation (for Zync integration tests).
+      script_name: str, the Zync API script name
+      token: str, token of the API script
+      url: str, URL to the site, defaults to ZYNC_URL in config.py.
     """
     #
     #   Call the HTTPBackend.__init__() method.
     #
     super(Zync, self).__init__(
         script_name, token, timeout=timeout, 
-        disable_ssl_certificate_validation=disable_ssl_certificate_validation)
+        disable_ssl_certificate_validation=disable_ssl_certificate_validation,
+        url=url)
     #
     #   Initialize class variables by pulling various info from ZYNC.
     #
