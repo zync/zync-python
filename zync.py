@@ -827,6 +827,9 @@ class ArnoldJob(Job):
 
     * yres: The output image y resolution.
 
+    project_dir: Path to the 3d project directory, if one exists. For example,
+      your Maya project. This will help Zync to resolve relative file paths.
+
     * output_dir: The directory into which to download all output frames.
 
     * output_filename: The name of the output files. Can be a path, i.e.
@@ -879,6 +882,9 @@ class VrayJob(Job):
     * frange: The frame range to render.
 
     * chunk_size: The number of frames to render per task.
+
+    project_dir: Path to the 3d project directory, if one exists. For example,
+      your Maya project. This will help Zync to resolve relative file paths.
 
     * output_dir: The directory to store output frames in.
 
