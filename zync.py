@@ -219,6 +219,7 @@ class HTTPBackend(object):
         flags = parser.parse_args([])
         credentials = oauth2client.tools.run_flow(flow, storage, flags)
       credentials.refresh(httplib2.Http())
+      self.access_token = credentials.access_token
       userinfo = json.loads(self.__google_api('plus/v1/people/me'))
       primary_email = None
       for email in userinfo['emails']:
@@ -226,6 +227,7 @@ class HTTPBackend(object):
           primary_email = email['value']
           break
       if not primary_email:
+        self.access_token = None
         raise ZyncAuthenticationError('Could not locate user email address. ' +
           'Emails found: %s' % str(userinfo['emails']))
       self._save_oauth_credentials(
