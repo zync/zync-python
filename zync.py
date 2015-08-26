@@ -499,7 +499,7 @@ class Job(object):
     job controls are initiated.
     """
     self._check_id()
-    url = '%s/api/jobs/%d' % (self.zync.url,)
+    url = '%s/api/jobs/%d' % (self.zync.url, int(self.id))
     data = {'status': status}
     return self.zync.request(url, 'POST', data)
 
