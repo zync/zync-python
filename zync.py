@@ -400,13 +400,6 @@ class Zync(HTTPBackend):
     url = '%s/api/jobs/%d' % (self.url, job_id)
     return self.request(url, 'GET')
 
-  def get_controller_status(self):
-    """
-    Checks the job controller status.
-    """
-    url = '%s/api/controller' % (self.url,)
-    return self.request(url, 'GET')
-
   def submit_job(self, job_type, *args, **kwargs):
     """
     Submit a new job to Zync.
