@@ -464,6 +464,9 @@ class Zync(HTTPBackend):
       '/static/data/pricelist.json') 
     return self.request(url, 'GET')
 
+  def get_eulas(self):
+    return self.request('%s/api/eulas' % self.url, 'GET', {})
+
 class Job(object):
   """
   Zync Job main class.
