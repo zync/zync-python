@@ -635,10 +635,15 @@ class Job(object):
     #
     if 'scene_info' in data:
       data['scene_info'] = json.dumps(data['scene_info'])
-    # Another special case for the "output_dir" parameter, which needs
-    # to be a fully-resolved path.
-    if 'output_dir' in data:
-      data['output_dir'] = os.path.abspath(data['output_dir'])
+    # Another special case for parameters which may hold the job's output
+    # directory, which we must resolve to an absolute path.
+    output_params = (
+      'output_dir',
+      'out_path',
+    )
+    for output_param in output_params:
+      if output_param in data:
+        data[output_param] = os.path.abspath(data[output_param])
     url = '%s/api/jobs' % (self.zync.url,)
     self.id = self.zync.request(url, 'POST', data)
     return self.id
