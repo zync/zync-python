@@ -7,7 +7,7 @@ Clone this repository to a centrally available location at your facility. This l
 Once cloned, create a new file zync-python/config.py. This file should contain one line:
 
 ```
-ZYNC_URL = "https://<site>.zyncio.com"
+ZYNC_URL = "https://<site>.zync.io"
 ```
 
 This address will match the address you use to access your Zync Web Console.
