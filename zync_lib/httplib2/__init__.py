@@ -22,7 +22,7 @@ __contributors__ = ["Thomas Broyer (t.broyer@ltgt.net)",
                     "Sam Ruby",
                     "Louis Nyffenegger"]
 __license__ = "MIT"
-__version__ = "0.9"
+__version__ = "0.9.2"
 
 import re
 import sys
@@ -1285,8 +1285,9 @@ class Http(object):
                     err = getattr(e, 'args')[0]
                 else:
                     err = e.errno
-                if err == errno.ECONNREFUSED: # Connection refused
-                    raise
+                if err in (errno.ENETUNREACH, errno.EADDRNOTAVAIL) and i < RETRIES:
+                    continue  # retry on potentially transient socket errors
+                raise
             except httplib.HTTPException:
                 # Just because the server closed the connection doesn't apparently mean
                 # that the server didn't send a response.
@@ -1496,7 +1497,7 @@ class Http(object):
             info = email.Message.Message()
             cached_value = None
             if self.cache:
-                cachekey = defrag_uri
+                cachekey = defrag_uri.encode('utf-8')
                 cached_value = self.cache.get(cachekey)
                 if cached_value:
                     # info = email.message_from_string(cached_value)
