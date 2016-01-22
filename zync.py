@@ -5,6 +5,7 @@ A Python wrapper around the Zync HTTP API.
 """
 
 import argparse
+import errno
 import hashlib
 import json
 import os
@@ -253,6 +254,30 @@ class HTTPBackend(object):
     """
     self.access_token = access_token
     self.cookie = self.__auth(script_name, token, access_token=access_token, email=email)
+
+  def logout(self):
+    """Reduce current session back to script-level login."""
+    self._clear_oauth_credentials()
+    # overwrite cookie with new script-level cookie
+    self.cookie = self.__auth(self.script_name, self.token)
+
+  def _clear_oauth_credentials(self):
+    """Clear OAuth credentials."""
+    self.access_token = None
+    # Remove the saved session from disk, ignore errors if it does not exist
+    try:
+      os.remove(OAUTH2_STORAGE)
+    except OSError as e:
+      if e.errno != errno.ENOENT:
+        raise
+
+  def has_user_login(self):
+    """Check if current session has run the login-with-google flow.
+
+    Returns:
+      bool, True if logged in, False otherwise.
+    """
+    return (self.access_token is not None)
 
   def request(self, url, operation, data={}, headers={}):
     http = self.__get_http()
