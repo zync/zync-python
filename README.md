@@ -22,8 +22,8 @@ import zync
 # set up a Zync object
 z = zync.Zync('script_name', 'api_key')
 
-# authenticate with Zync
-z.login(username='bcipriano', password='password')
+# authenticate with Zync using Google login
+z.login_with_google()
 
 # supply some non-default rendering paramters
 job_params = dict(frange = '1-100', chunk_size = 2)

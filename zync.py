@@ -114,7 +114,7 @@ class HTTPBackend(object):
     """
     http = self.__get_http()
     try:
-      response, content = http.request(self.url, 'GET')
+      response, _ = http.request(self.url, 'GET')
     except httplib2.ServerNotFoundError:
       return False
     except AttributeError:
@@ -134,8 +134,7 @@ class HTTPBackend(object):
     else:
       raise ZyncAuthenticationError('Zync authentication failed.')
 
-  def __auth(self, script_name, token, username=None, password=None, 
-    access_token=None, email=None):
+  def __auth(self, script_name, token, access_token=None, email=None):
     """
     Authenticate with Zync.
     """
@@ -148,9 +147,6 @@ class HTTPBackend(object):
     if access_token is not None:
       args['access_token'] = access_token
       args['email'] = email
-    elif username != None:
-      args['user'] = username
-      args['pass'] = password
     data = urlencode(args)
     headers = {'Content-Type': 'application/x-www-form-urlencoded'}
     response, content = http.request(url, 'POST', data, headers=headers)
@@ -158,17 +154,6 @@ class HTTPBackend(object):
       return response['set-cookie']
     else:
       raise ZyncAuthenticationError(content)
-
-  def login(self, username=None, password=None):
-    """
-    Elevate your session's permission level by authenticating with your username
-    and password. This is not required for most methods in the class - the main
-    exception is submit_job(), which does require user/pass authentication.
-    """
-    if self.up():
-      self.cookie = self.__auth(self.script_name, self.token, username=username, password=password)
-    else:
-      raise ZyncConnectionError('ZYNC is down at URL: %s' % (self.url,))
 
   def __google_api(self, api_path, params={}):
     """Make a call to a Google API.
