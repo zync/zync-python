@@ -53,7 +53,7 @@ def __get_config_dir():
     str, absolute path to the Zync config directory
   """
   config_dir = os.path.expanduser('~')
-  if platform.system().lower() == 'win32':
+  if platform.system().lower() in ('win32', 'windows'):
     config_dir = os.path.join(config_dir, 'AppData', 'Roaming', 'Zync')
   elif platform.system().lower() == 'darwin':
     config_dir = os.path.join(config_dir, 'Library', 'Application Support', 'Zync')
