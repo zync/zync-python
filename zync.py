@@ -10,12 +10,60 @@ import hashlib
 import json
 import os
 import platform
+import select
+import SocketServer
 import sys
 import time
 from urllib import urlencode
 
 import zync_lib.httplib2 as httplib2
 import zync_lib.oauth2client as oauth2client 
+
+# This is a workaround for a problem that appears on CentOS.
+# The stacktrace the user gets when trying to login with Google to a plugin is this:
+# Traceback (most recent call last):
+#   File "/usr/local/Nuke9.0v7/plugins/nuke/callbacks.py", line 127, in knobChanged
+#     _doCallbacks(knobChangeds)
+#   File "/usr/local/Nuke9.0v7/plugins/nuke/callbacks.py", line 46, in _doCallbacks
+#     f[0](*f[1],**f[2])
+#   File "/usr/local/Nuke9.0v7/plugins/nukescripts/panels.py", line 23, in PythonPanelKnobChanged
+#     widget.knobChangedCallback(nuke.thisKnob())
+#   File "/usr/local/Nuke9.0v7/plugins/nukescripts/panels.py", line 71, in knobChangedCallback
+#     self.knobChanged(knob)
+#   File "/home/shortcut/zync/zync-nuke/zync_nuke.py", line 644, in knobChanged
+#     self.userLabel.setValue('  %s' % ZYNC.login_with_google())
+#   File "/home/shortcut/zync/zync-python/zync.py", line 210, in login_with_google
+#     credentials = oauth2client.tools.run_flow(flow, storage, flags)
+#   File "/home/shortcut/zync/zync-python/zync_lib/oauth2client/util.py", line 129, in positional_wrapper
+#     return wrapped(*args, **kwargs)
+#   File "/home/shortcut/zync/zync-python/zync_lib/oauth2client/tools.py", line 199, in run_flow
+#     httpd.handle_request()
+#   File "/usr/local/Nuke9.0v7/lib/python2.7/SocketServer.py", line 265, in handle_request
+#     fd_sets = select.select([self], [], [], timeout)
+# select.error: (4, 'Interrupted system call')
+# The cause of that is that both Maya and Nuke have an old version of SocketServer.py that does
+# not correctly retry "select" call interrupted by EINTR. So we inject an implementation
+# of handle_request() to ClientRedirectServer which does retries.
+def _eintr_retry(redirect_server):
+  """Call handle_request() from base class, retrying if interrupted by EINTR.
+
+  Args:
+    redirect_server: oauth2client.tools.ClientRedirectServer   
+  """
+  while True:
+    try:
+      # We cannot call super() here, because ClientRedirectServer inherits
+      # from an old-style class.
+      # The full inheritance hierarchy is:
+      # BaseServer <- TCPServer <- HTTPServer <- ClientRedirectServer
+      # but the handle_request() method is defined in BaseServer and not
+      # redefined in subclasses. 
+      return SocketServer.BaseServer.handle_request(redirect_server)
+    except (OSError, select.error) as e:
+      if e.args[0] != errno.EINTR:
+        raise
+
+oauth2client.tools.ClientRedirectServer.handle_request = _eintr_retry
 
 class ZyncAuthenticationError(Exception):
     pass
