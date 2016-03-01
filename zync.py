@@ -474,6 +474,8 @@ class Zync(HTTPBackend):
       JobSelect = ArnoldJob
     elif job_type == 'vray':
       JobSelect = VrayJob
+    elif job_type == 'ae':
+      JobSelect = AEJob
     else:
       raise ZyncError('Unrecognized job_type "%s".' % (job_type,))
     #
@@ -987,3 +989,34 @@ class VrayJob(Job):
     #   Fire Job.submit() to submit the job.
     #
     return super(VrayJob, self).submit(data)
+
+class AEJob(Job):
+  """
+  Encapsulates AE-specific job functions.
+  
+  Typically you would launch AE jobs directly from After-Effects, which uses a
+  JavaScript environment. This class is provided mostly for Zync team's internal
+  use.
+  """
+  def __init__(self, *args, **kwargs):
+    #
+    #   Just run Job.__init__(), and set the job_type.
+    #
+    super(AEJob, self).__init__(*args, **kwargs)
+    self.job_type = 'ae'
+
+  def submit(self, file, params={}):
+    """
+    Submits an AE job to ZYNC.
+    """
+    #
+    #   Build default params, and update with what's been passed in.
+    #
+    data = {}
+    data['job_type'] = 'ae'
+    data['file_path'] = file
+    data.update(params)
+    #
+    #   Fire Job.submit() to submit the job.
+    #
+    return super(AEJob, self).submit(data)
