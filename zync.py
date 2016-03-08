@@ -171,11 +171,13 @@ class HTTPBackend(object):
       status = str(response['status'])
       return status.startswith('2') or status.startswith('3')
 
-  def set_cookie(self, headers={}):
+  def set_cookie(self, headers=None):
     """
     Adds the auth cookie to the given headers, raises
     ZyncAuthenticationError if cookie doesn't exist.
     """
+    if not headers:
+      headers = {}
     if self.cookie:
       headers['Cookie'] = self.cookie
       return headers
@@ -203,13 +205,13 @@ class HTTPBackend(object):
     else:
       raise ZyncAuthenticationError(content)
 
-  def __google_api(self, api_path, params={}):
+  def __google_api(self, api_path, params=None):
     """Make a call to a Google API.
 
     Args:
       api_path: str, the API path to call, i.e. the tail of the
         URL with no hostname
-      params: dict, key-value pairs of any parameters to be passed with 
+      params: dict, key-value pairs of any parameters to be passed with
         the GET request as part of the URL
 
     Returns:
@@ -312,12 +314,16 @@ class HTTPBackend(object):
     """
     return (self.access_token is not None)
 
-  def request(self, url, operation, data={}, headers={}):
+  def request(self, url, operation, data=None, headers=None):
     http = self.__get_http()
+    if not data:
+      data = {}
+    if not headers:
+      headers = {}
     headers = self.set_cookie(headers=headers)
     headers['X-Zync-Header'] = '1'
     if operation == 'GET':
-      if len(data) > 0:
+      if data:
         url += '?%s' % (urlencode(data),) 
       resp, content = http.request(url, operation, headers=headers)
     else:
@@ -719,7 +725,7 @@ class NukeJob(Job):
     super(NukeJob, self).__init__(*args, **kwargs)
     self.job_type = 'nuke'
 
-  def submit(self, script_path, write_name, params={}):
+  def submit(self, script_path, write_name, params=None):
     """
     Submits a Nuke job to ZYNC.
 
@@ -745,7 +751,8 @@ class NukeJob(Job):
     data['job_type'] = 'nuke'
     data['write_node'] = write_name
     data['file_path'] = script_path 
-    data.update(params)
+    if params:
+      data.update(params)
     #
     #   Fire Job.submit() to submit the job.
     #
@@ -762,7 +769,7 @@ class MayaJob(Job):
     super(MayaJob, self).__init__(*args, **kwargs)
     self.job_type = 'maya'
 
-  def submit(self, file, params={}):
+  def submit(self, file, params=None):
     """
     Submits a Maya job to ZYNC.
 
@@ -868,7 +875,8 @@ class MayaJob(Job):
     data = {}
     data['job_type'] = 'maya'
     data['file_path'] = file
-    data.update(params)
+    if params:
+      data.update(params)
     #
     #   Fire Job.submit() to submit the job.
     #
@@ -885,7 +893,7 @@ class ArnoldJob(Job):
     super(ArnoldJob, self).__init__(*args, **kwargs)
     self.job_type = 'arnold'
 
-  def submit(self, file, params={}):
+  def submit(self, file, params=None):
     """
     Submits an Arnold job to ZYNC.
 
@@ -927,7 +935,8 @@ class ArnoldJob(Job):
     data = {}
     data['job_type'] = 'arnold'
     data['file_path'] = file
-    data.update(params)
+    if params:
+      data.update(params)
     #
     #   Fire Job.submit() to submit the job.
     #
@@ -944,7 +953,7 @@ class VrayJob(Job):
     super(VrayJob, self).__init__(*args, **kwargs)
     self.job_type = 'vray'
 
-  def submit(self, file, params={}):
+  def submit(self, file, params=None):
     """
     Submits an Vray job to ZYNC.
 
@@ -984,7 +993,8 @@ class VrayJob(Job):
     data = {}
     data['job_type'] = 'vray'
     data['file_path'] = file
-    data.update(params)
+    if params:
+      data.update(params)
     #
     #   Fire Job.submit() to submit the job.
     #
@@ -1005,7 +1015,7 @@ class AEJob(Job):
     super(AEJob, self).__init__(*args, **kwargs)
     self.job_type = 'ae'
 
-  def submit(self, file, params={}):
+  def submit(self, file, params=None):
     """
     Submits an AE job to ZYNC.
     """
@@ -1015,7 +1025,8 @@ class AEJob(Job):
     data = {}
     data['job_type'] = 'ae'
     data['file_path'] = file
-    data.update(params)
+    if params:
+      data.update(params)
     #
     #   Fire Job.submit() to submit the job.
     #
