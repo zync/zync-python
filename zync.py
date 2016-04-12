@@ -118,7 +118,7 @@ class HTTPBackend(object):
   """
   Methods for talking to services over HTTP.
   """
-  def __init__(self, script_name, token, timeout=60.0, 
+  def __init__(self, timeout=60.0,
                disable_ssl_certificate_validation=False,
                url=None):
     """
@@ -126,28 +126,17 @@ class HTTPBackend(object):
     Args:
       disable_ssl_certificate_validation: bool, if True, will disable SSL
         certificate validation (for Zync integration tests).
-      script_name: str, the Zync API script name
-      token: str, token of the API script
       url: str, URL to the site.
     """
-    self.script_name = script_name
-    self.token = token
     if not url:
       url = ZYNC_URL
     self.url = url
     self.timeout = timeout
     self.disable_ssl_certificate_validation = disable_ssl_certificate_validation
-    # access_token holds the user's current OAuth access token. Not used
-    # if using a standard Zync login rather than a Google OAuth login.
     self.access_token = None
+    self.email = None
     if self.up():
-      # cookie holds the current session cookie which is needed to 
-      # make authenticated requests to the Zync REST API. This creates
-      # a session with script-level permissions, which allow most read-only
-      # functionality. A subsequent call to __auth() must be made to elevate
-      # permissions to user-level, which will allow write access for operations
-      # such as submitting jobs.
-      self.cookie = self.__auth(self.script_name, self.token)
+      self.login_with_google()
     else:
       raise ZyncConnectionError('ZYNC is down at URL: %s' % (self.url,))
 
@@ -184,19 +173,16 @@ class HTTPBackend(object):
     else:
       raise ZyncAuthenticationError('Zync authentication failed.')
 
-  def __auth(self, script_name, token, access_token=None, email=None):
+  def __auth(self, access_token, email):
     """
     Authenticate with Zync.
     """
     http = self.__get_http()
-    url = '%s/api/validate' % (self.url,)
+    url = '%s/api/validate' % self.url
     args = {
-      'script_name': script_name,
-      'token': token
+      'access_token': access_token,
+      'email': email,
     }
-    if access_token is not None:
-      args['access_token'] = access_token
-      args['email'] = email
     data = urlencode(args)
     headers = {'Content-Type': 'application/x-www-form-urlencoded'}
     response, content = http.request(url, 'POST', data, headers=headers)
@@ -271,34 +257,33 @@ class HTTPBackend(object):
         raise ZyncAuthenticationError('Could not locate user email address. ' +
           'Emails found: %s' % str(userinfo['emails']))
       self._save_oauth_credentials(
-          credentials.access_token, self.script_name, self.token, primary_email)
+          credentials.access_token, primary_email)
       return primary_email
     else:
       raise ZyncConnectionError('ZYNC is down at URL: %s' % (self.url,))
     
-  def _save_oauth_credentials(self, access_token, script_name, token, email):
+  def _save_oauth_credentials(self, access_token, email):
     """Saves credentials for oauth authentication.
     
     Used by Zync integration tests.
     
     Args:
       access_token: str, the OAuth access token.
-      script_name: str, the Zync API script name
-      token: str, token of the API script
       email: str, email address of the user authenticating with oauth
     """
     self.access_token = access_token
-    self.cookie = self.__auth(script_name, token, access_token=access_token, email=email)
+    self.email = email
+    self.cookie = self.__auth(access_token, email)
 
   def logout(self):
     """Reduce current session back to script-level login."""
     self._clear_oauth_credentials()
-    # overwrite cookie with new script-level cookie
-    self.cookie = self.__auth(self.script_name, self.token)
+    self.cookie = None
 
   def _clear_oauth_credentials(self):
     """Clear OAuth credentials."""
     self.access_token = None
+    self.email = None
     # Remove the saved session from disk, ignore errors if it does not exist
     try:
       os.remove(OAUTH2_STORAGE)
@@ -344,7 +329,7 @@ class Zync(HTTPBackend):
   and token to use most API methods.
   """
 
-  def __init__(self, script_name, token, timeout=60.0, application=None, 
+  def __init__(self, timeout=60.0, application=None, 
                disable_ssl_certificate_validation=False, url=None):
     """
     Create a Zync object, for interacting with the Zync service.
@@ -352,15 +337,13 @@ class Zync(HTTPBackend):
     Args:
       disable_ssl_certificate_validation: bool, if True, will disable SSL
         certificate validation (for Zync integration tests).
-      script_name: str, the Zync API script name
-      token: str, token of the API script
       url: str, URL to the site, defaults to ZYNC_URL in config.py.
     """
     #
     #   Call the HTTPBackend.__init__() method.
     #
     super(Zync, self).__init__(
-        script_name, token, timeout=timeout, 
+        timeout=timeout, 
         disable_ssl_certificate_validation=disable_ssl_certificate_validation,
         url=url)
     #
