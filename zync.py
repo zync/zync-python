@@ -120,13 +120,17 @@ class HTTPBackend(object):
   """
   def __init__(self, timeout=60.0,
                disable_ssl_certificate_validation=False,
-               url=None):
+               url=None, access_token=None, email=None):
     """
-    
     Args:
+      timeout: float, timeout limit for HTTP connection in seconds
       disable_ssl_certificate_validation: bool, if True, will disable SSL
         certificate validation (for Zync integration tests).
-      url: str, URL to the site.
+      url: str, URL to the site, defaults to ZYNC_URL in config.py.
+      access_token: str, OAuth access token to use for this connection. if not
+        provided Zync will perform the proper OAuth flow.
+      email: str, email address to use to authentication this connection. used
+        in combination with access_token.
     """
     if not url:
       url = ZYNC_URL
@@ -136,7 +140,7 @@ class HTTPBackend(object):
     self.access_token = None
     self.email = None
     if self.up():
-      self.login_with_google()
+      self.login_with_google(access_token, email)
     else:
       raise ZyncConnectionError('ZYNC is down at URL: %s' % (self.url,))
 
@@ -218,10 +222,18 @@ class HTTPBackend(object):
     else:
       raise ZyncError(content)
 
-  def login_with_google(self):
+  def login_with_google(self, access_token=None, email=None):
     """Performs the Google OAuth flow, which will open the user's browser
     for authorization if necessary, then retrieves the user's account info
     and authorizes with Zync.
+
+    Args:
+      access_token: str, access token to use for authentication flow. only
+        necessary if you must perform OAuth manually for some reason; in
+        most cases this should be left blank so Zync performs the OAuth
+        flow
+      email: str, email address to use to authenticate with. used in
+        combination with access_token. usually blank.
 
     Returns:
       str, the user's email address
@@ -230,7 +242,17 @@ class HTTPBackend(object):
       ZyncAuthenticationError if user info is invalid or the login fails
       ZyncConnectionError if the Zync site is down
     """
-    if self.up():
+    if not self.up():
+      raise ZyncConnectionError('ZYNC is down at URL: %s' % self.url)
+    # if auth details were provided, no need to do anything else, just save
+    # them out. this will make the appropriate call to pass auth details to
+    # Zync to check that they are valid for that Zync account.
+    if access_token and email:
+      self._save_oauth_credentials(
+          access_token, email)
+      return email
+    # otherwise, run the standard OAuth flow
+    else:
       storage = oauth2client.file.Storage(OAUTH2_STORAGE)
       credentials = storage.get()
       if credentials is None or credentials.invalid:
@@ -259,8 +281,6 @@ class HTTPBackend(object):
       self._save_oauth_credentials(
           credentials.access_token, primary_email)
       return primary_email
-    else:
-      raise ZyncConnectionError('ZYNC is down at URL: %s' % (self.url,))
     
   def _save_oauth_credentials(self, access_token, email):
     """Saves credentials for oauth authentication.
@@ -330,14 +350,21 @@ class Zync(HTTPBackend):
   """
 
   def __init__(self, timeout=60.0, application=None, 
-               disable_ssl_certificate_validation=False, url=None):
+               disable_ssl_certificate_validation=False, url=None,
+               access_token=None, email=None):
     """
     Create a Zync object, for interacting with the Zync service.
     
     Args:
+      timeout: float, timeout limit for HTTP connection in seconds
+      application: str, name of the application in use, if any
       disable_ssl_certificate_validation: bool, if True, will disable SSL
         certificate validation (for Zync integration tests).
       url: str, URL to the site, defaults to ZYNC_URL in config.py.
+      access_token: str, OAuth access token to use for this connection. if not
+        provided Zync will perform the proper OAuth flow.
+      email: str, email address to use to authentication this connection. used
+        in combination with access_token.
     """
     #
     #   Call the HTTPBackend.__init__() method.
@@ -345,7 +372,7 @@ class Zync(HTTPBackend):
     super(Zync, self).__init__(
         timeout=timeout, 
         disable_ssl_certificate_validation=disable_ssl_certificate_validation,
-        url=url)
+        url=url, access_token=access_token, email=email)
     #
     #   Initialize class variables by pulling various info from ZYNC.
     #
