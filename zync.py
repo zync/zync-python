@@ -373,6 +373,7 @@ class Zync(HTTPBackend):
         timeout=timeout, 
         disable_ssl_certificate_validation=disable_ssl_certificate_validation,
         url=url, access_token=access_token, email=email)
+    self.application = application
     #
     #   Initialize class variables by pulling various info from ZYNC.
     #
@@ -415,8 +416,11 @@ class Zync(HTTPBackend):
     """
     Get a list of instance types available to your site.
     """
-    url = '%s/api/instance_types' % (self.url,)
-    return self.request(url, 'GET')
+    if self.application:
+      data = {'plugin_type': self.application}
+    else:
+      data = {}
+    return self.request('%s/api/instance_types' % self.url, 'GET', data=data)
 
   def get_enabled_features(self):
     """
