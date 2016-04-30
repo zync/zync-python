@@ -11,15 +11,10 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import zync
 
 #
-#   Connect to ZYNC. Set up a script & API token via the Admin page in the ZYNC
-#   Web Console.
+#   Connect to ZYNC. This will start the browser to perform an Oauth2
+#   authorization if needed.
 #
-z = zync.Zync('arnold_launcher', '********************')
-
-#
-#   Login with your ZYNC username & password. This will allow you to launch jobs.
-#
-z.login(username='zync_user', password='********')
+z = zync.Zync()
 
 #
 #   The path to your Arnold scene. Use a wildcard to indicate multiple files.
@@ -103,7 +98,7 @@ params = {
     #
     #   arnold_version = The Arnold version in use in your scene.
     #
-    'arnold_version': '1.0.0.1', 
+    'arnold_version': '1.2.3.1', 
     #
     #   padding = The frame padding.
     #
