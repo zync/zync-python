@@ -113,6 +113,8 @@ def __get_config_dir():
 
 CLIENT_SECRET = os.path.join(current_dir, 'client_secret.json')
 OAUTH2_STORAGE = os.path.join(__get_config_dir(), 'oauth2.dat')
+OAUTH2_SCOPES = ['https://www.googleapis.com/auth/userinfo.profile',
+                 'https://www.googleapis.com/auth/userinfo.email']
 
 class HTTPBackend(object):
   """
@@ -256,13 +258,8 @@ class HTTPBackend(object):
       storage = oauth2client.file.Storage(OAUTH2_STORAGE)
       credentials = storage.get()
       if credentials is None or credentials.invalid:
-        flow = oauth2client.client.flow_from_clientsecrets(
-          CLIENT_SECRET,
-          scope=(
-            'https://www.googleapis.com/auth/userinfo.profile '
-            'https://www.googleapis.com/auth/userinfo.email'
-          )
-        )
+        flow = oauth2client.client.flow_from_clientsecrets(CLIENT_SECRET,
+                                                           scope=' '.join(OAUTH2_SCOPES))
         parser = argparse.ArgumentParser(parents=[oauth2client.tools.argparser])
         flags = parser.parse_args([])
         credentials = oauth2client.tools.run_flow(flow, storage, flags)
