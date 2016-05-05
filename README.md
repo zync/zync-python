@@ -16,21 +16,7 @@ A sample configuration file "config.py.sample" is included in this repository.
 
 ## Usage
 
-```python
-import zync
-
-# set up a Zync object
-z = zync.Zync('script_name', 'api_key')
-
-# authenticate with Zync using Google login
-z.login_with_google()
-
-# supply some non-default rendering paramters
-job_params = dict(frange = '1-100', chunk_size = 2)
-
-# submit the job to Zync
-z.submit_job('nuke', '/path/to/nuke_script.nk', 'write_node', job_params)
-```
+See [examples](/examples) for sample scripts demonstrating usage.
 
 ## Dependencies
 

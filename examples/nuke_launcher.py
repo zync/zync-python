@@ -11,15 +11,10 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import zync
 
 #
-#   Connect to ZYNC. Set up a script & API token via the Admin page in the ZYNC
-#   Web Console.
+#   Connect to ZYNC. This will start the browser to perform an Oauth2
+#   authorization if needed.
 #
-z = zync.Zync('nuke_launcher', '**********************')
-
-#
-#   Login with your ZYNC username & password. This will allow you to launch jobs.
-#
-z.login(username='zync_user', password='********')
+z = zync.Zync()
 
 #
 #   Path to the Nuke script.
