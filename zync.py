@@ -262,6 +262,11 @@ class HTTPBackend(object):
                                                            scope=' '.join(OAUTH2_SCOPES))
         parser = argparse.ArgumentParser(parents=[oauth2client.tools.argparser])
         flags = parser.parse_args([])
+        # if --noauth_local_webserver was given on the original commandline
+        # pass it through, this will cause OAuth to display a link with which
+        # to perform auth, rather than try to open a browser.
+        if '--noauth_local_webserver' in sys.argv:
+          flags.noauth_local_webserver = True
         credentials = oauth2client.tools.run_flow(flow, storage, flags)
       credentials.refresh(httplib2.Http())
       self.access_token = credentials.access_token
