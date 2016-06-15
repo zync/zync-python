@@ -4,6 +4,10 @@ Zync Python API
 A Python wrapper around the Zync HTTP API.
 """
 
+
+__version__ = '1.0.0'
+
+
 import argparse
 import errno
 import hashlib
@@ -17,7 +21,8 @@ import time
 from urllib import urlencode
 
 import zync_lib.httplib2 as httplib2
-import zync_lib.oauth2client as oauth2client 
+import zync_lib.oauth2client as oauth2client
+
 
 # This is a workaround for a problem that appears on CentOS.
 # The stacktrace the user gets when trying to login with Google to a plugin is this:
@@ -65,17 +70,22 @@ def _eintr_retry(redirect_server):
 
 oauth2client.tools.ClientRedirectServer.handle_request = _eintr_retry
 
+
 class ZyncAuthenticationError(Exception):
     pass
+
 
 class ZyncError(Exception):
     pass
 
+
 class ZyncConnectionError(Exception):
     pass
 
+
 class ZyncPreflightError(Exception):
     pass
+
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 if os.environ.get('ZYNC_URL'):
@@ -92,6 +102,7 @@ required_config = ['ZYNC_URL']
 for key in required_config:
   if not key in globals():
     raise ZyncError('config.py must define a value for %s.' % (key,))
+
 
 def __get_config_dir():
   """Return the directory in which Zync configuration should be stored.
@@ -111,10 +122,12 @@ def __get_config_dir():
     os.makedirs(config_dir)
   return config_dir
 
+
 CLIENT_SECRET = os.path.join(current_dir, 'client_secret.json')
 OAUTH2_STORAGE = os.path.join(__get_config_dir(), 'oauth2.dat')
 OAUTH2_SCOPES = ['https://www.googleapis.com/auth/userinfo.profile',
                  'https://www.googleapis.com/auth/userinfo.email']
+
 
 class HTTPBackend(object):
   """
@@ -345,6 +358,7 @@ class HTTPBackend(object):
     else:
       raise ZyncError('%s: %s: %s' % (url.split('?')[0], resp['status'], content))
 
+
 class Zync(HTTPBackend):
   """
   The entry point to the Zync service. Initialize this with your script name
@@ -549,6 +563,7 @@ class Zync(HTTPBackend):
   def get_eulas(self):
     return self.request('%s/api/eulas' % self.url, 'GET', {})
 
+
 class Job(object):
   """
   Zync Job main class.
@@ -729,7 +744,8 @@ class Job(object):
     url = '%s/api/jobs' % (self.zync.url,)
     self.id = self.zync.request(url, 'POST', data)
     return self.id
- 
+
+
 class NukeJob(Job):
   """
   Encapsulates Nuke-specific Job functions.
@@ -773,6 +789,7 @@ class NukeJob(Job):
     #   Fire Job.submit() to submit the job.
     #
     return super(NukeJob, self).submit(data)
+
 
 class MayaJob(Job):
   """
@@ -898,6 +915,7 @@ class MayaJob(Job):
     #
     return super(MayaJob, self).submit(data)
 
+
 class ArnoldJob(Job):
   """
   Encapsulates Arnold-specific job functions.
@@ -958,6 +976,7 @@ class ArnoldJob(Job):
     #
     return super(ArnoldJob, self).submit(data)
 
+
 class VrayJob(Job):
   """
   Encapsulates Vray-specific job functions.
@@ -1015,6 +1034,7 @@ class VrayJob(Job):
     #   Fire Job.submit() to submit the job.
     #
     return super(VrayJob, self).submit(data)
+
 
 class AEJob(Job):
   """
