@@ -17,6 +17,7 @@ import platform
 import select
 import SocketServer
 import sys
+import threading
 import time
 from urllib import urlencode
 
@@ -154,6 +155,7 @@ class HTTPBackend(object):
     self.disable_ssl_certificate_validation = disable_ssl_certificate_validation
     self.access_token = None
     self.email = None
+    self.timer = None
     if self.up():
       self.login_with_google(access_token, email)
     else:
@@ -308,10 +310,19 @@ class HTTPBackend(object):
     """
     self.access_token = access_token
     self.email = email
-    self.cookie = self.__auth(access_token, email)
+    self._refresh_token()
+
+  def _refresh_token(self):
+    TOKEN_REFRESH_INTERVAL_S = 10 * 60
+    self.cookie = self.__auth(self.access_token, self.email)
+    self.timer = threading.Timer(TOKEN_REFRESH_INTERVAL_S, self._refresh_token, ())
+    self.timer.start()
 
   def logout(self):
     """Reduce current session back to script-level login."""
+    if self.timer:
+      self.timer.cancel()
+      self.timer = None
     self._clear_oauth_credentials()
     self.cookie = None
 
