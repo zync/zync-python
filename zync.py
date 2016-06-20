@@ -316,6 +316,7 @@ class HTTPBackend(object):
     TOKEN_REFRESH_INTERVAL_S = 10 * 60
     self.cookie = self.__auth(self.access_token, self.email)
     self.timer = threading.Timer(TOKEN_REFRESH_INTERVAL_S, self._refresh_token, ())
+    self.timer.setDaemon(True)
     self.timer.start()
 
   def logout(self):
