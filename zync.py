@@ -321,11 +321,14 @@ class HTTPBackend(object):
 
   def logout(self):
     """Reduce current session back to script-level login."""
+    self.cancel_token_refresh()
+    self._clear_oauth_credentials()
+    self.cookie = None
+
+  def cancel_token_refresh(self):
     if self.timer:
       self.timer.cancel()
       self.timer = None
-    self._clear_oauth_credentials()
-    self.cookie = None
 
   def _clear_oauth_credentials(self):
     """Clear OAuth credentials."""
