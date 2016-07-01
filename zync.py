@@ -420,9 +420,9 @@ class Zync(HTTPBackend):
     Get your site's configuration settings. Use the "var" argument to
     get a specific value, or leave it out to get all values.
     """
-    url = '%s/api/config' % (self.url,)
+    url = '%s/api/config' % self.url
     if var != None:
-      url += '/%s' % (var,)
+      url += '/%s' % var
     result = self.request(url, 'GET')
     if var == None:
       return result
@@ -430,6 +430,19 @@ class Zync(HTTPBackend):
       return result[var]
     else:
       return None
+
+  def is_experiment_enabled(self, experiment):
+    """Checks if experiment is enabled for the side using Zync web API.
+    Args:
+      experiment: str, name of the experiment
+
+    Returns:
+      True if experiment is enabled, False otherwise
+    """
+    url = '%s/api/experiment/%s' % (self.url, experiment)
+    result = self.request(url, 'GET')
+
+    return result
 
   def compare_instance_types(self, type_a, type_b):
     obj_a = self.INSTANCE_TYPES[type_a]
