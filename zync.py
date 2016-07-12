@@ -456,11 +456,13 @@ class Zync(HTTPBackend):
     else:
       return 0
 
-  def get_instance_types(self):
+  def get_instance_types(self, renderer=None):
     """
     Get a list of instance types available to your site.
     """
-    if self.application:
+    if self.application and renderer:
+      data = {'plugin_type': '%s_%s' % (self.application, renderer)}
+    elif self.application:
       data = {'plugin_type': self.application}
     else:
       data = {}
@@ -540,6 +542,8 @@ class Zync(HTTPBackend):
       JobSelect = VrayJob
     elif job_type == 'ae':
       JobSelect = AEJob
+    elif job_type == 'houdini':
+      JobSelect = HoudiniJob
     else:
       raise ZyncError('Unrecognized job_type "%s".' % (job_type,))
     #
@@ -1095,3 +1099,32 @@ class AEJob(Job):
     #   Fire Job.submit() to submit the job.
     #
     return super(AEJob, self).submit(data)
+
+
+class HoudiniJob(Job):
+  """
+  Encapsulates Houdini-specific job functions.
+  """
+  def __init__(self, *args, **kwargs):
+    #
+    #   Just run Job.__init__(), and set the job_type.
+    #
+    super(HoudiniJob, self).__init__(*args, **kwargs)
+    self.job_type = 'houdini'
+
+  def submit(self, file, params=None):
+    """
+    Submits an Houdini job to ZYNC.
+    """
+    #
+    #   Build default params, and update with what's been passed in.
+    #
+    data = {}
+    data['job_type'] = 'houdini'
+    data['file_path'] = file
+    if params:
+      data.update(params)
+    #
+    #   Fire Job.submit() to submit the job.
+    #
+    return super(HoudiniJob, self).submit(data)
