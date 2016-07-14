@@ -5,7 +5,7 @@ A Python wrapper around the Zync HTTP API.
 """
 
 
-__version__ = '1.2.0'
+__version__ = '1.2.1'
 
 
 import argparse
@@ -156,9 +156,12 @@ class HTTPBackend(object):
     self.access_token = None
     self.email = None
     self.timer = None
+    self.externally_provided_access_token = access_token
+    self.externally_provided_email = email
     if self.up():
       self.login_attempts = 3
-      self.login_with_google(access_token, email)
+      self.login_with_google(self.externally_provided_access_token,
+                             self.externally_provided_email)
     else:
       raise ZyncConnectionError('ZYNC is down at URL: %s' % (self.url,))
 
@@ -321,7 +324,8 @@ class HTTPBackend(object):
       self.login_attempts -= 1
       if self.login_attempts == 0:
         raise
-      self.login_with_google()
+      self.login_with_google(self.externally_provided_access_token,
+                             self.externally_provided_email)
     else:
       self.login_attempts = 3
       self.timer = threading.Timer(TOKEN_REFRESH_INTERVAL_S, self._refresh_token, ())
