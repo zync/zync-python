@@ -54,7 +54,7 @@ def _eintr_retry(redirect_server):
   """Call handle_request() from base class, retrying if interrupted by EINTR.
 
   Args:
-    redirect_server: oauth2client.tools.ClientRedirectServer   
+    redirect_server: oauth2client.tools.ClientRedirectServer
   """
   while True:
     try:
@@ -63,7 +63,7 @@ def _eintr_retry(redirect_server):
       # The full inheritance hierarchy is:
       # BaseServer <- TCPServer <- HTTPServer <- ClientRedirectServer
       # but the handle_request() method is defined in BaseServer and not
-      # redefined in subclasses. 
+      # redefined in subclasses.
       return SocketServer.BaseServer.handle_request(redirect_server)
     except (OSError, select.error) as e:
       if e.args[0] != errno.EINTR:
@@ -157,14 +157,15 @@ class HTTPBackend(object):
     self.email = None
     self.timer = None
     if self.up():
+      self.login_attempts = 3
       self.login_with_google(access_token, email)
     else:
       raise ZyncConnectionError('ZYNC is down at URL: %s' % (self.url,))
 
   def __get_http(self):
     return httplib2.Http(
-        timeout=self.timeout, 
-        disable_ssl_certificate_validation=self.disable_ssl_certificate_validation) 
+        timeout=self.timeout,
+        disable_ssl_certificate_validation=self.disable_ssl_certificate_validation)
 
   def up(self):
     """
@@ -229,7 +230,7 @@ class HTTPBackend(object):
         200 status code.
     """
     http = httplib2.Http()
-    headers = {'Authorization': 'OAuth %s' % self.access_token} 
+    headers = {'Authorization': 'OAuth %s' % self.access_token}
     url = 'https://www.googleapis.com/%s' % api_path
     if params:
       url += '?%s' % urlencode(params)
@@ -298,12 +299,12 @@ class HTTPBackend(object):
       self._save_oauth_credentials(
           credentials.access_token, primary_email)
       return primary_email
-    
+
   def _save_oauth_credentials(self, access_token, email):
     """Saves credentials for oauth authentication.
-    
+
     Used by Zync integration tests.
-    
+
     Args:
       access_token: str, the OAuth access token.
       email: str, email address of the user authenticating with oauth
@@ -314,10 +315,18 @@ class HTTPBackend(object):
 
   def _refresh_token(self):
     TOKEN_REFRESH_INTERVAL_S = 10 * 60
-    self.cookie = self.__auth(self.access_token, self.email)
-    self.timer = threading.Timer(TOKEN_REFRESH_INTERVAL_S, self._refresh_token, ())
-    self.timer.setDaemon(True)
-    self.timer.start()
+    try:
+      self.cookie = self.__auth(self.access_token, self.email)
+    except ZyncAuthenticationError:
+      self.login_attempts -= 1
+      if self.login_attempts == 0:
+        raise
+      self.login_with_google()
+    else:
+      self.login_attempts = 3
+      self.timer = threading.Timer(TOKEN_REFRESH_INTERVAL_S, self._refresh_token, ())
+      self.timer.setDaemon(True)
+      self.timer.start()
 
   def logout(self):
     """Reduce current session back to script-level login."""
@@ -359,7 +368,7 @@ class HTTPBackend(object):
     headers['X-Zync-Header'] = '1'
     if operation == 'GET':
       if data:
-        url += '?%s' % (urlencode(data),) 
+        url += '?%s' % (urlencode(data),)
       resp, content = http.request(url, operation, headers=headers)
     else:
       if 'Content-Type' not in headers:
@@ -380,12 +389,12 @@ class Zync(HTTPBackend):
   and token to use most API methods.
   """
 
-  def __init__(self, timeout=60.0, application=None, 
+  def __init__(self, timeout=60.0, application=None,
                disable_ssl_certificate_validation=False, url=None,
                access_token=None, email=None):
     """
     Create a Zync object, for interacting with the Zync service.
-    
+
     Args:
       timeout: float, timeout limit for HTTP connection in seconds
       application: str, name of the application in use, if any
@@ -401,7 +410,7 @@ class Zync(HTTPBackend):
     #   Call the HTTPBackend.__init__() method.
     #
     super(Zync, self).__init__(
-        timeout=timeout, 
+        timeout=timeout,
         disable_ssl_certificate_validation=disable_ssl_certificate_validation,
         url=url, access_token=access_token, email=email)
     self.application = application
@@ -509,7 +518,7 @@ class Zync(HTTPBackend):
 
   def get_jobs(self, max=100):
     """
-    Returns a list of existing ZYNC jobs. 
+    Returns a list of existing ZYNC jobs.
     """
     url = '%s/api/jobs' % (self.url,)
     data = {}
@@ -589,7 +598,7 @@ class Zync(HTTPBackend):
 
   def get_pricing(self):
     url = ('http://zync.cloudpricingcalculator.appspot.com' +
-      '/static/data/pricelist.json') 
+      '/static/data/pricelist.json')
     return self.request(url, 'GET')
 
   def get_eulas(self):
@@ -736,12 +745,12 @@ class Job(object):
   def submit(self, params):
     """
     Submit a new job to ZYNC.
-    
+
     Returns:
       str, ID of the submitted job.
     """
     #
-    #   The submit_params dict will store most job options. Build 
+    #   The submit_params dict will store most job options. Build
     #   some defaults in; most of these will be overridden by the
     #   submission script.
     #
@@ -814,7 +823,7 @@ class NukeJob(Job):
     data = {}
     data['job_type'] = 'nuke'
     data['write_node'] = write_name
-    data['file_path'] = script_path 
+    data['file_path'] = script_path
     if params:
       data.update(params)
     #
@@ -918,7 +927,7 @@ class MayaJob(Job):
             a step of 2 will render every other frame. Setting step > 1
             will cause chunk_size to be set to 1. Default: 1
 
-        use_mi: Whether to use Mental Ray Standalone to render. Only used for Mental Ray jobs. 
+        use_mi: Whether to use Mental Ray Standalone to render. Only used for Mental Ray jobs.
             This option is required for most sites. Default: 0
 
         use_vrscene: Whether to use Vray Standalone to render. Only used for Vray jobs.
@@ -978,7 +987,7 @@ class ArnoldJob(Job):
     * output_dir: The directory into which to download all output frames.
 
     * output_filename: The name of the output files. Can be a path, i.e.
-        can include slashes. 
+        can include slashes.
 
     * scene_info: A dict of information about your Arnold scene to help
         ZYNC prepare its environment properly.
@@ -1071,7 +1080,7 @@ class VrayJob(Job):
 class AEJob(Job):
   """
   Encapsulates AE-specific job functions.
-  
+
   Typically you would launch AE jobs directly from After-Effects, which uses a
   JavaScript environment. This class is provided mostly for Zync team's internal
   use.
