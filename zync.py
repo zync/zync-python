@@ -395,7 +395,9 @@ class HTTPBackend(object):
         return json.loads(content)
       except ValueError:
         return content
-    elif resp['status'] in ['400', '403']:
+    # Unfortunately, for historical reasons the login error and some fatal errors
+    # all return 400 HTTP code. We have to resort to filtering by the message here.
+    elif resp['status'] == '403' or (res['status'] == '400' and 'Please login' in content):
       raise ZyncAuthenticationError(content)
     else:
       raise ZyncError('%s: %s: %s' % (url.split('?')[0], resp['status'], content))
