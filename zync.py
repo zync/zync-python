@@ -14,10 +14,10 @@ import hashlib
 import json
 import os
 import platform
+import random
 import select
 import SocketServer
 import sys
-import threading
 import time
 from urllib import urlencode
 
@@ -155,15 +155,10 @@ class HTTPBackend(object):
     self.disable_ssl_certificate_validation = disable_ssl_certificate_validation
     self.access_token = None
     self.email = None
-    self.timer = None
     self.externally_provided_access_token = access_token
     self.externally_provided_email = email
-    if self.up():
-      self.login_attempts = 3
-      self.login_with_google(self.externally_provided_access_token,
-                             self.externally_provided_email)
-    else:
-      raise ZyncConnectionError('ZYNC is down at URL: %s' % (self.url,))
+    self.login_with_google(self.externally_provided_access_token,
+                           self.externally_provided_email)
 
   def __get_http(self):
     return httplib2.Http(
@@ -243,7 +238,24 @@ class HTTPBackend(object):
     else:
       raise ZyncError(content)
 
-  def login_with_google(self, access_token=None, email=None):
+  def login_with_google(self, access_token=None, email=None, attempts=5,
+                        max_delay=15):
+    """Wraps _login_with_google() in additional retrial loop.
+
+    If request fails, retry after waiting random time between 1 and
+    `max_delay` seconds.
+    """
+    for attempt in range(attempts):
+      try:
+        if attempt > 0:
+          time.sleep(1 + random.random() * (max_delay - 1))
+        return self._login_with_google(access_token, email)
+      except ZyncAuthenticationError:
+        exc_info = sys.exc_info()
+    # no attempt successful, re-raise last exception
+    raise exc_info[0], exc_info[1], exc_info[2]
+
+  def _login_with_google(self, access_token=None, email=None):
     """Performs the Google OAuth flow, which will open the user's browser
     for authorization if necessary, then retrieves the user's account info
     and authorizes with Zync.
@@ -314,34 +326,12 @@ class HTTPBackend(object):
     """
     self.access_token = access_token
     self.email = email
-    self._refresh_token()
-
-  def _refresh_token(self):
-    TOKEN_REFRESH_INTERVAL_S = 10 * 60
-    try:
-      self.cookie = self.__auth(self.access_token, self.email)
-    except ZyncAuthenticationError:
-      self.login_attempts -= 1
-      if self.login_attempts == 0:
-        raise
-      self.login_with_google(self.externally_provided_access_token,
-                             self.externally_provided_email)
-    else:
-      self.login_attempts = 3
-      self.timer = threading.Timer(TOKEN_REFRESH_INTERVAL_S, self._refresh_token, ())
-      self.timer.setDaemon(True)
-      self.timer.start()
+    self.cookie = self.__auth(self.access_token, self.email)
 
   def logout(self):
     """Reduce current session back to script-level login."""
-    self.cancel_token_refresh()
     self._clear_oauth_credentials()
     self.cookie = None
-
-  def cancel_token_refresh(self):
-    if self.timer:
-      self.timer.cancel()
-      self.timer = None
 
   def _clear_oauth_credentials(self):
     """Clear OAuth credentials."""
@@ -362,7 +352,29 @@ class HTTPBackend(object):
     """
     return (self.access_token is not None)
 
-  def request(self, url, operation, data=None, headers=None):
+  def request(self, url, operation, data=None, headers=None, attempts=5):
+    """Wraps _request() in additional authentication and retrial logic.
+
+    If request fails with ZyncAuthenticationError, try to log in
+    and retry up to `attempts` times.
+    """
+    for attempt in range(attempts):
+      if self.cookie is None:
+        self.login_with_google(self.externally_provided_access_token,
+                               self.externally_provided_email)
+      try:
+        return self._request(url, operation, data, headers)
+      except ZyncAuthenticationError:
+        exc_info = sys.exc_info()
+        # forget credentials
+        self.access_token = None
+        self.email = None
+        self.cookie = None
+    # no attempt successful, re-raise last exception
+    raise exc_info[0], exc_info[1], exc_info[2]
+
+  def _request(self, url, operation, data=None, headers=None):
+    """Former request(); performs requests to Zync site."""
     http = self.__get_http()
     if not data:
       data = {}
@@ -383,6 +395,8 @@ class HTTPBackend(object):
         return json.loads(content)
       except ValueError:
         return content
+    elif resp['status'] in ['400', '403']:
+      raise ZyncAuthenticationError(content)
     else:
       raise ZyncError('%s: %s: %s' % (url.split('?')[0], resp['status'], content))
 
