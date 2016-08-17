@@ -574,6 +574,8 @@ class Zync(HTTPBackend):
       JobSelect = AEJob
     elif job_type == 'houdini':
       JobSelect = HoudiniJob
+    elif job_type == 'c4d':
+      JobSelect = C4dJob
     else:
       raise ZyncError('Unrecognized job_type "%s".' % (job_type,))
     #
@@ -1158,3 +1160,32 @@ class HoudiniJob(Job):
     #   Fire Job.submit() to submit the job.
     #
     return super(HoudiniJob, self).submit(data)
+
+
+class C4dJob(Job):
+  """
+  Encapsulates Cinema 4D-specific job functions.
+  """
+  def __init__(self, *args, **kwargs):
+    #
+    #   Just run Job.__init__(), and set the job_type.
+    #
+    super(C4dJob, self).__init__(*args, **kwargs)
+    self.job_type = 'c4d'
+
+  def submit(self, file, params=None):
+    """
+    Submits an Cinema 4D job to ZYNC.
+    """
+    #
+    #   Build default params, and update with what's been passed in.
+    #
+    data = {}
+    data['job_type'] = 'c4d'
+    data['file_path'] = file
+    if params:
+      data.update(params)
+    #
+    #   Fire Job.submit() to submit the job.
+    #
+    return super(C4dJob, self).submit(data)
