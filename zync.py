@@ -5,7 +5,7 @@ A Python wrapper around the Zync HTTP API.
 """
 
 
-__version__ = '1.2.5'
+__version__ = '1.2.6'
 
 
 import argparse
@@ -20,6 +20,7 @@ import SocketServer
 import sys
 import time
 from urllib import urlencode
+from distutils.version import StrictVersion
 
 import zync_lib.httplib2 as httplib2
 import zync_lib.oauth2client as oauth2client
@@ -1189,3 +1190,26 @@ class C4dJob(Job):
     #   Fire Job.submit() to submit the job.
     #
     return super(C4dJob, self).submit(data)
+
+
+def is_latest_version(versions_to_check, check_zync_python=True):
+  """Checks if version of the plugins are up to date with published ones.
+
+  Args:
+    versions_to_check: [(str, str)], List of pairs representing name of the
+        plugin and it's current version
+
+  Returns:
+    bool, True if asked version is up to date
+  """
+  version_api_template = 'https://api.zyncrender.com/%s/version'
+  if check_zync_python:
+    versions_to_check.append(('zync_python', __version__))
+  http = httplib2.Http()
+  for plugin_name, local_version in versions_to_check:
+    publish_url = version_api_template % plugin_name
+    response, published_version = http.request(publish_url, 'GET')
+    if StrictVersion(local_version) < StrictVersion(published_version):
+      # Update is needed
+      return False
+  return True
