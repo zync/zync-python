@@ -72,7 +72,6 @@ def _eintr_retry(redirect_server):
 
 oauth2client.tools.ClientRedirectServer.handle_request = _eintr_retry
 
-
 class ZyncAuthenticationError(Exception):
     pass
 
@@ -161,10 +160,24 @@ class HTTPBackend(object):
     self.login_with_google(self.externally_provided_access_token,
                            self.externally_provided_email)
 
+  @staticmethod
+  def get_http(timeout=60.0,
+               disable_ssl_certificate_validation=False):
+    proxy_info = None
+    if 'HTTP_PROXY_ADDRESS' in globals():
+      proxy_info = httplib2.ProxyInfo(httplib2.socks.PROXY_TYPE_HTTP,
+                                      HTTP_PROXY_ADDRESS,
+                                      HTTP_PROXY_PORT,
+                                      proxy_user=globals().get('HTTP_PROXY_USER'),
+                                      proxy_pass=globals().get('HTTP_PROXY_PASSWORD'))
+
+    return httplib2.Http(timeout=timeout,
+                         disable_ssl_certificate_validation=disable_ssl_certificate_validation,
+                         proxy_info=proxy_info)
+
   def __get_http(self):
-    return httplib2.Http(
-        timeout=self.timeout,
-        disable_ssl_certificate_validation=self.disable_ssl_certificate_validation)
+    return HTTPBackend.get_http(self.timeout,
+                                disable_ssl_certificate_validation=self.disable_ssl_certificate_validation)
 
   def up(self):
     """
@@ -228,7 +241,7 @@ class HTTPBackend(object):
       ZyncError, if the response contains anything other than a
         200 status code.
     """
-    http = httplib2.Http()
+    http = self.__get_http()
     headers = {'Authorization': 'OAuth %s' % self.access_token}
     url = 'https://www.googleapis.com/%s' % api_path
     if params:
@@ -299,8 +312,8 @@ class HTTPBackend(object):
         # to perform auth, rather than try to open a browser.
         if '--noauth_local_webserver' in sys.argv:
           flags.noauth_local_webserver = True
-        credentials = oauth2client.tools.run_flow(flow, storage, flags)
-      credentials.refresh(httplib2.Http())
+        credentials = oauth2client.tools.run_flow(flow, storage, flags, http=self.__get_http())
+      credentials.refresh(self.__get_http())
       self.access_token = credentials.access_token
       userinfo = json.loads(self.__google_api('plus/v1/people/me'))
       primary_email = None
@@ -621,7 +634,7 @@ class Zync(HTTPBackend):
     return os.path.join(zync_dir, new_filename)
 
   def get_pricing(self):
-    url = ('http://zync.cloudpricingcalculator.appspot.com' +
+    url = ('https://zync-dot-cloudpricingcalculator.appspot.com' +
       '/static/data/pricelist.json')
     return self.request(url, 'GET')
 
@@ -1205,7 +1218,7 @@ def is_latest_version(versions_to_check, check_zync_python=True):
   version_api_template = 'https://api.zyncrender.com/%s/version'
   if check_zync_python:
     versions_to_check.append(('zync_python', __version__))
-  http = httplib2.Http()
+  http = HTTPBackend.get_http()
   for plugin_name, local_version in versions_to_check:
     publish_url = version_api_template % plugin_name
     response, published_version = http.request(publish_url, 'GET')
