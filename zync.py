@@ -5,7 +5,7 @@ A Python wrapper around the Zync HTTP API.
 """
 
 
-__version__ = '1.3.3'
+__version__ = '1.3.4'
 
 
 import argparse
