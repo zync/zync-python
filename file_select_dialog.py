@@ -16,6 +16,8 @@ try:
   QDirModel = PySide.QtGui.QDirModel
   QHeaderView = PySide.QtGui.QHeaderView
   QTreeView = PySide.QtGui.QTreeView
+
+  pysideVersion = PySide.__version__
 except:
   import pyside2uic as pysideuic
   import PySide2.QtCore as QtCore
@@ -26,6 +28,8 @@ except:
   QDirModel = PySide2.QtWidgets.QDirModel
   QHeaderView = PySide2.QtWidgets.QHeaderView
   QTreeView = PySide2.QtWidgets.QTreeView
+
+  pysideVersion = PySide2.__version__
 
 import xml.etree.ElementTree as ElementTree
 
@@ -181,7 +185,10 @@ class FileSelectDialog(object):
              UI_ICON_FILE_STEM % 'checked.png'))
     tree_view.setStyleSheet(style.replace('\\', '/'))
     header = tree_view.header()
-    header.setResizeMode(QHeaderView.Interactive)
+    if pysideVersion == '1.2.0':
+      header.setResizeMode(QHeaderView.Interactive)
+    else:
+      header.setSectionResizeMode(QHeaderView.Interactive)
     header.resizeSection(0, 300)
     header.resizeSection(1, 65)
     header.resizeSection(2, 65)
