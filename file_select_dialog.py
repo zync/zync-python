@@ -3,6 +3,7 @@
 
 import glob
 import os
+import re
 
 # Try importing from PySide (Maya 2016) first, then from PySide2 (Maya 2017)
 # Alias the classes since some of them have been moved from PyGui to PyWidgets
@@ -185,7 +186,7 @@ class FileSelectDialog(object):
              UI_ICON_FILE_STEM % 'checked.png'))
     tree_view.setStyleSheet(style.replace('\\', '/'))
     header = tree_view.header()
-    if pysideVersion == '1.2.0':
+    if re.match("1\.*", pysideVersion):
       header.setResizeMode(QHeaderView.Interactive)
     else:
       header.setSectionResizeMode(QHeaderView.Interactive)
