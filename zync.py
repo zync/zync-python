@@ -960,7 +960,7 @@ class MayaJob(Job):
             bake_sets must be provided. Bake jobs are currently in beta and are probably not
             available to your site yet. Default: []
 
-        step: The frame step to render, i.e. a step of 1 will render very frame,
+        step: The frame step to render, i.e. a step of 1 will render every frame,
             a step of 2 will render every other frame. Setting step > 1
             will cause chunk_size to be set to 1. Default: 1
 
