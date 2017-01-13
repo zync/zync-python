@@ -72,6 +72,7 @@ def _eintr_retry(redirect_server):
 
 oauth2client.tools.ClientRedirectServer.handle_request = _eintr_retry
 
+
 class ZyncAuthenticationError(Exception):
     pass
 
@@ -848,7 +849,7 @@ class NukeJob(Job):
 
     * chunk_size: The number of frames to render per task.
 
-    step: The frame step, i.e. a step of 1 will render very frame,
+    step: The frame step, i.e. a step of 1 will render every frame,
         a step of 2 will render every other frame. Setting step > 1
         will cause chunk_size to be set to 1. Defaults to 1.
 
@@ -960,7 +961,7 @@ class MayaJob(Job):
             bake_sets must be provided. Bake jobs are currently in beta and are probably not
             available to your site yet. Default: []
 
-        step: The frame step to render, i.e. a step of 1 will render very frame,
+        step: The frame step to render, i.e. a step of 1 will render every frame,
             a step of 2 will render every other frame. Setting step > 1
             will cause chunk_size to be set to 1. Default: 1
 
