@@ -103,7 +103,11 @@ params = {
     #   padding = The frame padding.
     #
     'padding': 3 
-  } 
+  },
+  #
+  # plugin_version = Version of plugin. 'custom' causes the version checking to be skipped.
+  #
+  'plugin_version': 'custom'
 }
 
 #

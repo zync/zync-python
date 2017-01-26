@@ -70,7 +70,11 @@ render_params = {
     #
     #   proj_name = ZYNC project.
     #
-    'proj_name': 'NUKE_LAUNCHER'
+    'proj_name': 'NUKE_LAUNCHER',
+    #
+    # plugin_version = Version of plugin. 'custom' causes the version checking to be skipped.
+    #
+    'plugin_version': 'custom'
 }
 
 #
