@@ -36,6 +36,8 @@ import xml.etree.ElementTree as ElementTree
 
 from cStringIO import StringIO
 
+from settings import Settings
+
 UI_SELECT_FILES = '%s/resources/select_files_dialog.ui' % os.path.dirname(__file__)
 UI_ICON_FILE_STEM = '%s/resources/%%s' % os.path.dirname(__file__)
 
@@ -43,18 +45,19 @@ class CheckableDirModel(QDirModel):
   """Extends QDirModel by adding checkboxes next to files and
   directories. Stores the files and directories selected."""
 
-  def __init__(self):
+  def __init__(self, selected_files):
     QDirModel.__init__(self, None)
-    self.files = {}
+    self.files = self._init_files(selected_files)
 
   def set_tree_view(self, tree_view):
     self.tree_view = tree_view
 
-  def get_selected_files(self, selected_files):
-    selected_files.clear()
+  def get_selected_files(self):
+    selected_files = []
     for filename, status in self.files.items():
       if status == QtCore.Qt.Checked:
-        self._addSelectedFiles(filename, selected_files)
+        selected_files.append(filename)
+    return selected_files
 
   def flags(self, index):
     return QDirModel.flags(self, index) | QtCore.Qt.ItemIsUserCheckable
@@ -88,6 +91,21 @@ class CheckableDirModel(QDirModel):
       return True
     else:
       return QDirModel.setData(self, index, value, role)
+
+  @staticmethod
+  def _init_files(selected_files):
+    files = {}
+    sorted_files = sorted(selected_files)
+    for file in sorted_files:
+      files[file] = QtCore.Qt.Checked
+      while True:
+        dir, basename = os.path.split(file)
+        if dir == file:
+          break
+        if not dir in files:
+          files[dir] = QtCore.Qt.PartiallyChecked
+        file = dir
+    return files
 
   def _getCheckStatus(self, filename):
     """Gets cumulative status of a node.
@@ -146,24 +164,17 @@ class CheckableDirModel(QDirModel):
         del self.files[full_name]
       self._clearDown(full_name)
 
-  def _addSelectedFiles(self, filename, selected_files):
-    if os.path.isdir(filename):
-      full_names = glob.glob(os.path.join(filename, '*'))
-      for full_name in full_names:
-        self._addSelectedFiles(full_name, selected_files)
-    else:
-      selected_files.add(filename)
-
 
 class FileSelectDialog(object):
   """Displays dialog allowing user to select files or directories"""
-  def __init__(self, selected_files, parent=None):
+  def __init__(self, project_name, parent=None):
     """Constructs file selection dialog
 
     Params:
-      selected_file: set, set to store selected files upon success
+      project_name: str, name of Zync project
     """
-    self.selected_files = selected_files
+    self.settings = Settings.get()
+    self.project_name = project_name
 
     FormClass = _load_ui_type(UI_SELECT_FILES)
     form_class = FormClass()
@@ -173,7 +184,8 @@ class FileSelectDialog(object):
       self.dialog.setParent(parent, QtCore.Qt.Window)
     form_class.setupUi(self.dialog)
 
-    self.model = CheckableDirModel()
+    selected_files = set(self.settings.get_aux_files(project_name))
+    self.model = CheckableDirModel(selected_files)
     tree_view = self.dialog.findChild(QTreeView, 'listDirsFiles')
     self.model.set_tree_view(tree_view)
     tree_view.setModel(self.model)
@@ -198,15 +210,23 @@ class FileSelectDialog(object):
     button_box.accepted.connect(self.accepted)
     button_box.rejected.connect(self.rejected)
 
-    self.accept_callback = None
+  @staticmethod
+  def get_extra_assets(new_project_name):
+    expanded_files = []
+    def expand_selected_files(selected_files, expanded_files):
+      for filename in selected_files:
+        if os.path.isdir(filename):
+          expand_selected_files(glob.glob(os.path.join(filename, '*')), expanded_files)
+        else:
+          expanded_files.append(filename)
+    selected_files = Settings.get().get_aux_files(new_project_name)
+    expand_selected_files(selected_files, expanded_files)
 
-  def set_accept_callback(self, callback):
-    self.accept_callback = callback
+    return expanded_files
 
   def accepted(self):
-    self.model.get_selected_files(self.selected_files)
-    if self.accept_callback:
-      self.accept_callback(self.selected_files)
+    selected_files = self.model.get_selected_files()
+    self.settings.put_aux_files(self.project_name, selected_files)
     if not self.parent_qt_window:
       self.dialog.destroy()
     else:
@@ -226,6 +246,7 @@ class FileSelectDialog(object):
   def exec_(self):
     self.dialog.exec_()
 
+
 def _load_ui_type(filename):
   """Loads and parses ui file created by Qt Designer"""
   xml = ElementTree.parse(filename)
@@ -244,10 +265,4 @@ def _load_ui_type(filename):
     form_class = frame['Ui_%s'%form_class]
 
   return form_class
-
-def show_dialog():
-  global dialog
-  dialog = FileSelectDialog(set())
-  dialog.show()
-
 
