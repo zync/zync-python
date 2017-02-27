@@ -5,7 +5,7 @@ A Python wrapper around the Zync HTTP API.
 """
 
 
-__version__ = '1.4.1'
+__version__ = '1.4.5'
 
 
 import argparse
@@ -22,9 +22,21 @@ import time
 from urllib import urlencode
 from distutils.version import StrictVersion
 
+# Workaround for certain versions of embedded python that don't have argv in sys
+# module. The lack of argv in sys manifests in an error in Oauth library:
+# Traceback (most recent call last):
+#   File "/usr/local/lib/python2.7/dist-packages/oauth2client/tools.py", line 83,
+#       in _CreateArgumentParser
+#     parser = argparse.ArgumentParser(add_help=False)
+#   File "/usr/lib/python2.7/argparse.py", line 1575, in __init__
+#     prog = _os.path.basename(_sys.argv[0])
+# AttributeError: 'module' object has no attribute 'argv'
+#
+if not hasattr(sys, 'argv'):
+  sys.argv  = ['']
+
 import zync_lib.httplib2 as httplib2
 import zync_lib.oauth2client as oauth2client
-
 
 # This is a workaround for a problem that appears on CentOS.
 # The stacktrace the user gets when trying to login with Google to a plugin is this:
