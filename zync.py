@@ -5,7 +5,7 @@ A Python wrapper around the Zync HTTP API.
 """
 
 
-__version__ = '1.4.5'
+__version__ = '1.4.6'
 
 
 import argparse
@@ -180,7 +180,7 @@ class HTTPBackend(object):
     if 'HTTP_PROXY_ADDRESS' in globals():
       proxy_info = httplib2.ProxyInfo(httplib2.socks.PROXY_TYPE_HTTP,
                                       HTTP_PROXY_ADDRESS,
-                                      HTTP_PROXY_PORT,
+                                      int(HTTP_PROXY_PORT),
                                       proxy_user=globals().get('HTTP_PROXY_USER'),
                                       proxy_pass=globals().get('HTTP_PROXY_PASSWORD'))
 
