@@ -5,7 +5,7 @@ A Python wrapper around the Zync HTTP API.
 """
 
 
-__version__ = '1.4.6'
+__version__ = '1.4.7'
 
 
 import argparse
@@ -28,7 +28,7 @@ from distutils.version import StrictVersion
 #   File "/usr/local/lib/python2.7/dist-packages/oauth2client/tools.py", line 83,
 #       in _CreateArgumentParser
 #     parser = argparse.ArgumentParser(add_help=False)
-#   File "/usr/lib/python2.7/argparse.py", line 1575, in __init__
+#   File "/usr/lib/python2.7/argparse.py", line 1575, in __init_zync_
 #     prog = _os.path.basename(_sys.argv[0])
 # AttributeError: 'module' object has no attribute 'argv'
 #
@@ -171,7 +171,8 @@ class HTTPBackend(object):
     self.externally_provided_access_token = access_token
     self.externally_provided_email = email
     self.login_with_google(self.externally_provided_access_token,
-                           self.externally_provided_email)
+                           self.externally_provided_email,
+                           attempts=1)
 
   @staticmethod
   def get_http(timeout=60.0,
@@ -653,6 +654,83 @@ class Zync(HTTPBackend):
 
   def get_eulas(self):
     return self.request('%s/api/eulas' % self.url, 'GET', {})
+
+  def get_machine_type_labels(self, renderer):
+    """Gets user-visible machine labels sorted in natural order
+
+    Params:
+      renderer: str, renderer
+
+    Returns:
+      str[], list of machine labels
+    """
+    instance_types = sorted(self.INSTANCE_TYPES.keys(), self.compare_instance_types)
+    machine_type_labels = []
+    for instance_type in instance_types:
+      machine_type_labels.append(self.machine_type_to_label(instance_type, renderer))
+
+    return machine_type_labels
+
+  def machine_type_to_label(self, machine_type, renderer):
+    """Gets the user-visible label for a given machine type.
+
+    Args:
+      machine_type: str, machine type name
+      renderer: str, renderer
+
+    Returns:
+      str, user-visible label
+    """
+    type_properties = self.INSTANCE_TYPES.get(machine_type)
+    if not type_properties:
+      return machine_type
+    label = '%s (%s)' % (machine_type, type_properties.get('description', '').replace(', preemptible',''))
+    if renderer:
+      machine_type_price = self.get_machine_type_price(machine_type, renderer)
+      if machine_type_price:
+        label += ' $%.02f' % machine_type_price
+    return label
+
+  def machine_type_from_label(self, instance_label, renderer):
+    """Given user-visible label returns machine type.
+
+    Example:
+      'zync-64vcpu-128gb (64 core, 176 GCEUs, 128GB RAM) $4.21' returns
+          'zync-64vcpu-128gb'
+      '(PREEMPTIBLE) zync-64vcpu-128gb (64 core, 176 GCEUs, 128GB RAM) $4.21' returns
+          '(PREEMPTIBLE) zync-64vcpu-128gb'
+
+    Args:
+      instance_label: str, user-visible label
+
+    Returns;
+      str, the machine type name, or None if label was empty
+    """
+    for machine_type in self.INSTANCE_TYPES:
+      current_label = self.machine_type_to_label(machine_type, renderer)
+      if current_label == instance_label:
+        return machine_type
+    return None
+
+  def get_machine_type_price(self, machine_type, renderer):
+    """Gets pricing for the given machine type.
+
+    Args:
+      machine_type: str, machine type name
+      renderer: str, renderer
+
+    Returns:
+      float, pricing for machine type + renderer combination, or
+      None if pricing is unknown
+    """
+    machine_type_base = machine_type.split(' ')[-1]
+    field_name = 'CP-ZYNC-%s-%s' % (machine_type_base.upper(), renderer.upper())
+    if 'PREEMPTIBLE' in machine_type.upper():
+      field_name += '-PREEMPTIBLE'
+    if (field_name in self.PRICING['gcp_price_list'] and
+            'us' in self.PRICING['gcp_price_list'][field_name]):
+      return float(self.PRICING['gcp_price_list'][field_name]['us'])
+    return None
 
 
 class Job(object):
