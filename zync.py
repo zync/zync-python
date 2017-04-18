@@ -5,7 +5,7 @@ A Python wrapper around the Zync HTTP API.
 """
 
 
-__version__ = '1.4.8'
+__version__ = '1.4.10'
 
 
 import argparse
@@ -37,6 +37,7 @@ if not hasattr(sys, 'argv'):
 
 import zync_lib.httplib2 as httplib2
 import zync_lib.oauth2client as oauth2client
+import zync_lib.requests as requests
 
 # This is a workaround for a problem that appears on CentOS.
 # The stacktrace the user gets when trying to login with Google to a plugin is this:
@@ -221,9 +222,16 @@ class HTTPBackend(object):
     else:
       raise ZyncAuthenticationError('Zync authentication failed.')
 
-  def __auth(self, access_token, email):
-    """
-    Authenticate with Zync.
+  def _auth_with_zync(self, access_token, email):
+    """Authenticates a valid Google account with the Zync service.
+
+    Args:
+      access_token: String OAuth access token as returned by Google OAuth flow.
+      email: String email address of the user authenticating.
+
+    Returns:
+      Response cookie from Zync. This cookie should be used for subsequent
+      requests to the Zync API.
     """
     http = self.__get_http()
     url = '%s/api/validate' % self.url
@@ -231,13 +239,21 @@ class HTTPBackend(object):
       'access_token': access_token,
       'email': email,
     }
-    data = urlencode(args)
     headers = {'Content-Type': 'application/x-www-form-urlencoded'}
-    response, content = http.request(url, 'POST', data, headers=headers)
+    response, content = http.request(url, 'POST', urlencode(args), headers=headers)
     if response['status'] == '200':
       return response['set-cookie']
     else:
-      raise ZyncAuthenticationError(content)
+      # Don't save local credentials if it's not a valid Zync account. This also
+      # frees the user to log in with a different account if they wish.
+      self._clear_oauth_credentials()
+      # We use spaces and newlines in the error message because in some contexts
+      # (e.g. the Maya status bar) newlines are ignored and the message gets
+      # hard to read.
+      raise ZyncAuthenticationError(
+          'Error for user %s logging into site %s. \n\n'
+          'Your saved Zync credentials will be cleared to allow you to do a fresh login. \n\n'
+          'Full error message: \n%s\n\n' % (email, self.url, content))
 
   def __google_api(self, api_path, params=None):
     """Make a call to a Google API.
@@ -309,8 +325,8 @@ class HTTPBackend(object):
     # them out. this will make the appropriate call to pass auth details to
     # Zync to check that they are valid for that Zync account.
     if access_token and email:
-      self._save_oauth_credentials(
-          access_token, email)
+      cookie = self._auth_with_zync(access_token, email)
+      self._save_oauth_credentials(access_token, email, cookie)
       return email
     # otherwise, run the standard OAuth flow
     else:
@@ -339,11 +355,11 @@ class HTTPBackend(object):
         self.access_token = None
         raise ZyncAuthenticationError('Could not locate user email address. ' +
           'Emails found: %s' % str(userinfo['emails']))
-      self._save_oauth_credentials(
-          credentials.access_token, primary_email)
+      cookie = self._auth_with_zync(credentials.access_token, primary_email)
+      self._save_oauth_credentials(credentials.access_token, primary_email, cookie)
       return primary_email
 
-  def _save_oauth_credentials(self, access_token, email):
+  def _save_oauth_credentials(self, access_token, email, cookie):
     """Saves credentials for oauth authentication.
 
     Used by Zync integration tests.
@@ -351,10 +367,12 @@ class HTTPBackend(object):
     Args:
       access_token: str, the OAuth access token.
       email: str, email address of the user authenticating with oauth
+      cookie: Cookie object authenticated against the Zync service, as returned
+          by _auth_with_zync().
     """
     self.access_token = access_token
     self.email = email
-    self.cookie = self.__auth(self.access_token, self.email)
+    self.cookie = cookie
 
   def logout(self):
     """Reduce current session back to script-level login."""
@@ -1305,14 +1323,20 @@ def is_latest_version(versions_to_check, check_zync_python=True):
 
   Returns:
     bool, True if asked version is up to date
+
+  Raises:
+    requests.exceptions.HTTPError: The HTTP request to fetch the current
+        version failed.
   """
   version_api_template = 'https://api.zyncrender.com/%s/version'
   if check_zync_python:
     versions_to_check.append(('zync_python', __version__))
-  http = HTTPBackend.get_http()
   for plugin_name, local_version in versions_to_check:
     publish_url = version_api_template % plugin_name
-    response, published_version = http.request(publish_url, 'GET')
+    response = requests.get(publish_url)
+    # Raises HTTPError if response status code indicates failure.
+    response.raise_for_status()
+    published_version = response.text
     if StrictVersion(local_version) < StrictVersion(published_version):
       # Update is needed
       return False
