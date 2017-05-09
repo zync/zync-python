@@ -1,4 +1,4 @@
-"""Dialog to sekect files or directories
+"""Dialog to select files or directories
 """
 
 import glob
@@ -14,7 +14,7 @@ try:
 
   QDialog = PySide.QtGui.QDialog
   QDialogButtonBox = PySide.QtGui.QDialogButtonBox
-  QDirModel = PySide.QtGui.QDirModel
+  QFileSystemModel = PySide.QtGui.QFileSystemModel
   QHeaderView = PySide.QtGui.QHeaderView
   QTreeView = PySide.QtGui.QTreeView
 
@@ -26,7 +26,7 @@ except:
 
   QDialog = PySide2.QtWidgets.QDialog
   QDialogButtonBox = PySide2.QtWidgets.QDialogButtonBox
-  QDirModel = PySide2.QtWidgets.QDirModel
+  QFileSystemModel = PySide2.QtWidgets.QFileSystemModel
   QHeaderView = PySide2.QtWidgets.QHeaderView
   QTreeView = PySide2.QtWidgets.QTreeView
 
@@ -41,12 +41,18 @@ from settings import Settings
 UI_SELECT_FILES = '%s/resources/select_files_dialog.ui' % os.path.dirname(__file__)
 UI_ICON_FILE_STEM = '%s/resources/%%s' % os.path.dirname(__file__)
 
-class CheckableDirModel(QDirModel):
+class CheckableDirModel(QFileSystemModel):
   """Extends QDirModel by adding checkboxes next to files and
   directories. Stores the files and directories selected."""
 
   def __init__(self, selected_files):
-    QDirModel.__init__(self, None)
+    super(CheckableDirModel, self).__init__(None)
+    if 'MacintoshVersion' in dir(QtCore.QSysInfo):
+      # This attrocity is the only way to make QFileSystemModel report /Volumes
+      # on Mac. Contrary to what the documentation says
+      # https://srinikom.github.io/pyside-docs/PySide/QtGui/QFileSystemModel.html#PySide.QtGui.PySide.QtGui.QFileSystemModel.setRootPath
+      # this causes the /Volumes path to appear in the list
+      self.setRootPath('/Volumes')
     self.files = self._init_files(selected_files)
 
   def set_tree_view(self, tree_view):
@@ -60,11 +66,11 @@ class CheckableDirModel(QDirModel):
     return selected_files
 
   def flags(self, index):
-    return QDirModel.flags(self, index) | QtCore.Qt.ItemIsUserCheckable
+    return QFileSystemModel.flags(self, index) | QtCore.Qt.ItemIsUserCheckable
 
   def data(self, index, role=QtCore.Qt.DisplayRole):
     if role != QtCore.Qt.CheckStateRole:
-      return QDirModel.data(self, index, role)
+      return QFileSystemModel.data(self, index, role)
     else:
       if index.column() == 0:
         filename = self.filePath(index)
@@ -90,7 +96,7 @@ class CheckableDirModel(QDirModel):
 
       return True
     else:
-      return QDirModel.setData(self, index, value, role)
+      return QFileSystemModel.setData(self, index, value, role)
 
   @staticmethod
   def _init_files(selected_files):
