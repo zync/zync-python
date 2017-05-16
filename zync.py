@@ -5,7 +5,7 @@ A Python wrapper around the Zync HTTP API.
 """
 
 
-__version__ = '1.4.12'
+__version__ = '1.4.13'
 
 
 import argparse
@@ -621,6 +621,8 @@ class Zync(HTTPBackend):
       JobSelect = HoudiniJob
     elif job_type == 'c4d':
       JobSelect = C4dJob
+    elif job_type == '3dsmax':
+      JobSelect = ThreeDSMaxJob
     else:
       raise ZyncError('Unrecognized job_type "%s".' % (job_type,))
     #
@@ -926,7 +928,7 @@ class Job(object):
     )
     for output_param in output_params:
       if output_param in data:
-        data[output_param] = os.path.abspath(data[output_param])
+        data[output_param] = os.path.abspath(data[output_param]).replace('\\', '/')
     url = '%s/api/jobs' % (self.zync.url,)
     self.id = self.zync.request(url, 'POST', data)
     return self.id
@@ -1311,6 +1313,35 @@ class C4dJob(Job):
     #   Fire Job.submit() to submit the job.
     #
     return super(C4dJob, self).submit(data)
+
+
+class ThreeDSMaxJob(Job):
+  """
+  Encapsulates 3DS Max specific job functions.
+  """
+  def __init__(self, *args, **kwargs):
+    #
+    #   Just run Job.__init__(), and set the job_type.
+    #
+    super(ThreeDSMaxJob, self).__init__(*args, **kwargs)
+    self.job_type = '3dsmax'
+
+  def submit(self, file, params=None):
+    """
+    Submits an 3DS Max job to ZYNC.
+    """
+    #
+    #   Build default params, and update with what's been passed in.
+    #
+    data = dict()
+    data['job_type'] = '3dsmax'
+    data['file_path'] = file
+    if params:
+      data.update(params)
+    #
+    #   Fire Job.submit() to submit the job.
+    #
+    return super(ThreeDSMaxJob, self).submit(data)
 
 
 def is_latest_version(versions_to_check, check_zync_python=True):
