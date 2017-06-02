@@ -5,7 +5,7 @@ A Python wrapper around the Zync HTTP API.
 """
 
 
-__version__ = '1.4.13'
+__version__ = '1.4.14'
 
 
 import argparse
@@ -13,7 +13,6 @@ import errno
 import hashlib
 import json
 import os
-import platform
 import random
 import select
 import SocketServer
@@ -126,9 +125,9 @@ def __get_config_dir():
     str, absolute path to the Zync config directory
   """
   config_dir = os.path.expanduser('~')
-  if platform.system().lower() in ('win32', 'windows'):
+  if sys.platform == 'win32':
     config_dir = os.path.join(config_dir, 'AppData', 'Roaming', 'Zync')
-  elif platform.system().lower() == 'darwin':
+  elif sys.platform == 'darwin':
     config_dir = os.path.join(config_dir, 'Library', 'Application Support', 'Zync')
   else:
     config_dir = os.path.join(config_dir, '.zync')
