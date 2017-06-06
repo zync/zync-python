@@ -13,6 +13,7 @@ try:
   import PySide.QtCore as QtCore
 
   QDialog = PySide.QtGui.QDialog
+  QDir = QtCore.QDir
   QDialogButtonBox = PySide.QtGui.QDialogButtonBox
   QFileSystemModel = PySide.QtGui.QFileSystemModel
   QHeaderView = PySide.QtGui.QHeaderView
@@ -25,6 +26,7 @@ except:
   import PySide2.QtWidgets
 
   QDialog = PySide2.QtWidgets.QDialog
+  QDir = QtCore.QDir
   QDialogButtonBox = PySide2.QtWidgets.QDialogButtonBox
   QFileSystemModel = PySide2.QtWidgets.QFileSystemModel
   QHeaderView = PySide2.QtWidgets.QHeaderView
@@ -53,6 +55,8 @@ class CheckableDirModel(QFileSystemModel):
       # https://srinikom.github.io/pyside-docs/PySide/QtGui/QFileSystemModel.html#PySide.QtGui.PySide.QtGui.QFileSystemModel.setRootPath
       # this causes the /Volumes path to appear in the list
       self.setRootPath('/Volumes')
+    else:
+      self.setRootPath(QDir.currentPath())
     self.files = self._init_files(selected_files)
 
   def set_tree_view(self, tree_view):
@@ -69,15 +73,17 @@ class CheckableDirModel(QFileSystemModel):
     return QFileSystemModel.flags(self, index) | QtCore.Qt.ItemIsUserCheckable
 
   def data(self, index, role=QtCore.Qt.DisplayRole):
-    if role != QtCore.Qt.CheckStateRole:
-      return QFileSystemModel.data(self, index, role)
+    if role == QtCore.Qt.CheckStateRole and index.column() == 0:
+      # In QTreeView once can add checkboxes for all columns
+      # here we only do it for the first where there is an icon
+      # and file/folder name
+      filename = self.filePath(index)
+      if self.files.get(filename, QtCore.Qt.Unchecked) == QtCore.Qt.PartiallyChecked:
+        return QtCore.Qt.PartiallyChecked
+      else:
+        return self._getCheckStatus(filename)
     else:
-      if index.column() == 0:
-        filename = self.filePath(index)
-        if self.files.get(filename, QtCore.Qt.Unchecked) == QtCore.Qt.PartiallyChecked:
-          return QtCore.Qt.PartiallyChecked
-        else:
-          return self._getCheckStatus(filename)
+      return QFileSystemModel.data(self, index, role)
 
   def setData(self, index, value, role):
     if role == QtCore.Qt.CheckStateRole and index.column() == 0:
@@ -198,10 +204,13 @@ class FileSelectDialog(object):
     style = ("""
         QTreeView::indicator:unchecked { image: url('%s'); }
         QTreeView::indicator:indeterminate { image: url('%s'); }
-        QTreeView::indicator:checked { image: url('%s'); }""" %
-            (UI_ICON_FILE_STEM % 'unchecked.png',
-             UI_ICON_FILE_STEM % 'intermediate.png',
-             UI_ICON_FILE_STEM % 'checked.png'))
+        QTreeView::indicator:checked { image: url('%s'); }
+        QTreeView::item {
+          border-top-color: transparent;
+          border-bottom-color: transparent;}""" %
+             (UI_ICON_FILE_STEM % 'unchecked.png',
+              UI_ICON_FILE_STEM % 'indeterminate.png',
+              UI_ICON_FILE_STEM % 'checked.png'))
     tree_view.setStyleSheet(style.replace('\\', '/'))
     header = tree_view.header()
     if re.match("1\.*", pysideVersion):

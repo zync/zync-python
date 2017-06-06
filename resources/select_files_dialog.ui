@@ -17,14 +17,18 @@
    </sizepolicy>
   </property>
   <property name="windowTitle">
-   <string>FileSelectDialog</string>
+   <string>Select Extra Files</string>
   </property>
   <property name="modal">
    <bool>true</bool>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
-    <widget class="QTreeView" name="listDirsFiles"/>
+    <widget class="QTreeView" name="listDirsFiles">
+     <property name="styleSheet">
+      <string notr="true"/>
+     </property>
+    </widget>
    </item>
    <item>
     <widget class="QFrame" name="frame">
