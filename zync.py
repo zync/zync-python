@@ -568,9 +568,11 @@ class Zync(HTTPBackend):
   def get_project_list(self):
     """
     Get a list of existing ZYNC projects on your site.
+    The projects queued for deletion are filtered out.
     """
     url = '%s/api/projects' % (self.url,)
-    return self.request(url, 'GET')
+    result = self.request(url, 'GET')
+    return [project for project in result if (project['delete'] == 0)]
 
   def get_project_name(self, file_path):
     """
