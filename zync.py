@@ -5,7 +5,7 @@ A Python wrapper around the Zync HTTP API.
 """
 
 
-__version__ = '1.4.15'
+__version__ = '1.4.17'
 
 
 import argparse
@@ -713,9 +713,9 @@ class Zync(HTTPBackend):
     """Given user-visible label returns machine type.
 
     Example:
-      'zync-64vcpu-128gb (64 core, 176 GCEUs, 128GB RAM) $4.21' returns
+      'zync-64vcpu-128gb (64 core, 128GB RAM) $4.21' returns
           'zync-64vcpu-128gb'
-      '(PREEMPTIBLE) zync-64vcpu-128gb (64 core, 176 GCEUs, 128GB RAM) $4.21' returns
+      '(PREEMPTIBLE) zync-64vcpu-128gb (64 core, 128GB RAM) $4.21' returns
           '(PREEMPTIBLE) zync-64vcpu-128gb'
 
     Args:
