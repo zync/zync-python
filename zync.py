@@ -5,7 +5,7 @@ A Python wrapper around the Zync HTTP API.
 """
 
 
-__version__ = '1.4.17'
+__version__ = '1.4.18'
 
 
 import argparse
@@ -36,6 +36,7 @@ if not hasattr(sys, 'argv'):
 
 import zync_lib.httplib2 as httplib2
 import zync_lib.oauth2client as oauth2client
+import zync_lib.requests as requests
 
 # This is a workaround for a problem that appears on CentOS.
 # The stacktrace the user gets when trying to login with Google to a plugin is this:
@@ -1352,14 +1353,20 @@ def is_latest_version(versions_to_check, check_zync_python=True):
 
   Returns:
     bool, True if asked version is up to date
+
+  Raises:
+    requests.exceptions.HTTPError: The HTTP request to fetch the current
+        version failed.
   """
   version_api_template = 'https://api.zyncrender.com/%s/version'
   if check_zync_python:
     versions_to_check.append(('zync_python', __version__))
-  http = HTTPBackend.get_http()
   for plugin_name, local_version in versions_to_check:
     publish_url = version_api_template % plugin_name
-    response, published_version = http.request(publish_url, 'GET')
+    response = requests.get(publish_url)
+    # Raises HTTPError if response status code indicates failure.
+    response.raise_for_status()
+    published_version = response.text
     if StrictVersion(local_version) < StrictVersion(published_version):
       # Update is needed
       return False
