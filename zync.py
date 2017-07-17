@@ -5,7 +5,7 @@ A Python wrapper around the Zync HTTP API.
 """
 
 
-__version__ = '1.4.18'
+__version__ = '1.4.20'
 
 
 import argparse
@@ -420,11 +420,11 @@ class HTTPBackend(object):
 
   def _request(self, url, operation, data=None, headers=None):
     """Former request(); performs requests to Zync site."""
-    http = self.__get_http()
     if not data:
       data = {}
     if not headers:
       headers = {}
+    http = self.__get_http()
     headers = self.set_cookie(headers=headers)
     headers['X-Zync-Header'] = '1'
     if operation == 'GET':
@@ -472,9 +472,6 @@ class Zync(HTTPBackend):
       email: str, email address to use to authentication this connection. used
         in combination with access_token.
     """
-    #
-    #   Call the HTTPBackend.__init__() method.
-    #
     super(Zync, self).__init__(
         timeout=timeout,
         disable_ssl_certificate_validation=disable_ssl_certificate_validation,
@@ -531,16 +528,24 @@ class Zync(HTTPBackend):
     else:
       return 0
 
-  def get_instance_types(self, renderer=None):
+  def refresh_instance_types_cache(self, renderer=None, usage_tag=None):
+    """Refreshes the cached instance types with new usage tag."""
+    self.INSTANCE_TYPES = self.get_instance_types(renderer=renderer, usage_tag=usage_tag)
+
+  def get_instance_types(self, renderer=None, usage_tag=None):
+    """Get a list of instance types available to your site.
+
+    Args:
+      renderer: str, name of the renderer, arnold etc.
+      usage_tag: str, a tag used for filtering instance types.
     """
-    Get a list of instance types available to your site.
-    """
-    if self.application and renderer:
-      data = {'plugin_type': '%s_%s' % (self.application, renderer)}
-    elif self.application:
-      data = {'plugin_type': self.application}
-    else:
-      data = {}
+    data = {}
+    if self.application:
+      data['job_type'] = self.application
+    if renderer:
+      data['renderer'] = renderer
+    if usage_tag:
+      data['usage_tag'] = usage_tag
     return self.request('%s/api/instance_types' % self.url, 'GET', data=data)
 
   def get_enabled_features(self):
