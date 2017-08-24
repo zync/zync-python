@@ -1,3 +1,5 @@
+# WARNING: This file is patched by Zync for a bug related to IPv6. A separate
+# PR will be sent to original repo.
 from __future__ import generators
 """
 httplib2
@@ -912,8 +914,10 @@ class HTTPConnectionWithTimeout(httplib.HTTPConnection):
                     print "connect: (%s, %s) ************" % (self.host, self.port)
                     if use_proxy:
                         print "proxy: %s ************" % str((proxy_host, proxy_port, proxy_rdns, proxy_user, proxy_pass))
-
-                self.sock.connect((self.host, self.port) + sa[2:])
+                if use_proxy:
+                    self.sock.connect((self.host, self.port) + sa[2:])
+                else:
+                    self.sock.connect(sa)
             except socket.error, msg:
                 if self.debuglevel > 0:
                     print "connect fail: (%s, %s)" % (self.host, self.port)
@@ -1030,7 +1034,10 @@ class HTTPSConnectionWithTimeout(httplib.HTTPSConnection):
 
                 if has_timeout(self.timeout):
                     sock.settimeout(self.timeout)
-                sock.connect((self.host, self.port))
+                if use_proxy:
+                    sock.connect((self.host, self.port) + sockaddr[:2])
+                else:
+                    sock.connect(sockaddr)
                 self.sock =_ssl_wrap_socket(
                     sock, self.key_file, self.cert_file,
                     self.disable_ssl_certificate_validation, self.ca_certs)
