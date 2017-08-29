@@ -904,7 +904,7 @@ class HTTPConnectionWithTimeout(httplib.HTTPConnection):
                     self.sock = socks.socksocket(af, socktype, proto)
                     self.sock.setproxy(proxy_type, proxy_host, proxy_port, proxy_rdns, proxy_user, proxy_pass)
                 else:
-                    self.sock = socket.socket(af, socktype, proto)
+                    self.sock = socket.socket()
                     self.sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
                 # Different from httplib: support timeouts.
                 if has_timeout(self.timeout):
@@ -917,7 +917,7 @@ class HTTPConnectionWithTimeout(httplib.HTTPConnection):
                 if use_proxy:
                     self.sock.connect((self.host, self.port) + sa[2:])
                 else:
-                    self.sock.connect(sa)
+                    self.sock.connect((self.host, self.port))
             except socket.error, msg:
                 if self.debuglevel > 0:
                     print "connect fail: (%s, %s)" % (self.host, self.port)
@@ -1029,7 +1029,7 @@ class HTTPSConnectionWithTimeout(httplib.HTTPSConnection):
 
                     sock.setproxy(proxy_type, proxy_host, proxy_port, proxy_rdns, proxy_user, proxy_pass)
                 else:
-                    sock = socket.socket(family, socktype, proto)
+                    sock = socket.socket()
                     sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
 
                 if has_timeout(self.timeout):
@@ -1037,7 +1037,7 @@ class HTTPSConnectionWithTimeout(httplib.HTTPSConnection):
                 if use_proxy:
                     sock.connect((self.host, self.port) + sockaddr[:2])
                 else:
-                    sock.connect(sockaddr)
+                    sock.connect((self.host, self.port))
                 self.sock =_ssl_wrap_socket(
                     sock, self.key_file, self.cert_file,
                     self.disable_ssl_certificate_validation, self.ca_certs)
