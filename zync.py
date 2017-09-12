@@ -5,7 +5,7 @@ A Python wrapper around the Zync HTTP API.
 """
 
 
-__version__ = '1.4.22'
+__version__ = '1.4.23'
 
 
 import argparse
@@ -908,6 +908,7 @@ class Job(object):
     #
     data = {}
     data['upload_only'] = 0
+    data['skip_download'] = 0
     data['start_new_slots'] = 1
     data['chunk_size'] = 1
     data['distributed'] = 0
