@@ -5,7 +5,7 @@ A Python wrapper around the Zync HTTP API.
 """
 
 
-__version__ = '1.4.23'
+__version__ = '1.4.26'
 
 
 import argparse
@@ -14,6 +14,7 @@ import hashlib
 import json
 import os
 import random
+import re
 import select
 import SocketServer
 import sys
@@ -645,6 +646,35 @@ class Zync(HTTPBackend):
     new_job.submit(*args, **kwargs)
     return new_job
 
+  def list_files(self, prefix_path, recursive=False, max_depth=4):
+    """Returns data about files stored in your Zync account.
+
+    Params:
+      prefix: str, path to the directory which content will be listed.
+                   e.g. projects/foo/home/user/scenes/
+      recursive: bool, whether to go recursively inside subfolders
+
+    Returns:
+      list, A list of structures describing the files tree.
+            e.g.
+            [
+              {
+               "url": "#", 
+               "rel": "projects/balls3/usr/local", 
+               "is_folder": true,
+               "name": "local"
+               "children": {
+                   "url": "#", 
+                   "rel": "projects/balls3/usr/local/foo.txt",
+                   "name": "foo.txt"
+                  }
+              }
+            ]
+    """
+    url = '%s/api/files' % self.url
+    args = dict(dir=prefix_path, recursive=recursive, max_depth=max_depth)
+    return self.request(url, 'POST', args)
+
   def generate_file_path(self, file_path):
     """
     Returns a hash-embedded scene path for separation from user scenes.
@@ -747,10 +777,32 @@ class Zync(HTTPBackend):
       float, pricing for machine type + renderer combination, or
       None if pricing is unknown
     """
-    machine_type_base = machine_type.split(' ')[-1]
-    field_name = 'CP-ZYNC-%s-%s' % (machine_type_base.upper(), renderer.upper())
-    if 'PREEMPTIBLE' in machine_type.upper():
-      field_name += '-PREEMPTIBLE'
+    types = [
+      {
+        # standard CPU based machine
+        'pattern': re.compile(r'^zync-\d+vcpu-\d+gb$'),
+        'field_name': lambda match: 'CP-ZYNC-%s-%s' % (match.group(0).upper(), renderer.upper())
+      },
+      {
+        # preemptible CPU based machine
+        'pattern': re.compile(r'^\(PREEMPTIBLE\) (zync-\d+vcpu-\d+gb)$'),
+        'field_name': lambda match: 'CP-ZYNC-%s-%s-PREEMPTIBLE' % (match.group(1).upper(), renderer.upper())
+      },
+      {
+        # K80 GPU based machine
+        'pattern': re.compile(r'^zync-(\d+vcpu-\d+gb) \((\d+) Tesla (.*)\)$'),
+        'field_name': lambda match: 'CP-ZYNC-ZYNC-%(cpu)s-%(gpu)sGPU-%(gpu_type)s-%(renderer)s' %
+                              dict(cpu=match.group(1).upper(), gpu=match.group(2),
+                                   gpu_type=match.group(3), renderer=renderer.upper())
+      }
+    ]
+    for type in types:
+      match = type['pattern'].match(machine_type)
+      if match:
+        field_name = type['field_name'](match)
+        break
+    else:
+      return None
     if (field_name in self.PRICING['gcp_price_list'] and
             'us' in self.PRICING['gcp_price_list'][field_name]):
       return float(self.PRICING['gcp_price_list'][field_name]['us'])
