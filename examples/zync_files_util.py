@@ -1,8 +1,21 @@
 #!/usr/bin/env python
 """A script for listing files previously uploaded to Zync.
 
+Each project in Zync has a separate file tree, so you have to specify 
+a project name when listing files. You can find a list of your created
+projects at https://YOUR_SITE.zync.io/file_browser.
+
 Example usage:
-  ./zync_files_util.py project_name list /
+  Linux/Mac:
+    ./zync_files_util.py project_name list /home/foo
+  Windows:
+    ./zync_files_util.py project_name list D:/Users/Foo/AppData
+    
+Note: CGS is case sensitive. That means there is a difference between  
+ ./zync_files_util.py project_name list D:/Users/Foo/AppData
+and
+ ./zync_files_util.py project_name list D:/Users/foo/appdata
+    
 """
 import argparse
 import os
@@ -232,7 +245,7 @@ def download_files(project, prefix, dest='.', max_depth=10, skip_confirm=False):
 def main():
   parser = argparse.ArgumentParser(description=__doc__)
 
-  parser.add_argument('project', help='Project name')
+  parser.add_argument('project', help='Zync project name')
 
   subparsers = parser.add_subparsers(metavar='ACTION', dest='action')
 
