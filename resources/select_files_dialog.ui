@@ -51,6 +51,24 @@
       <property name="bottomMargin">
        <number>0</number>
       </property>
+
+      <item>
+       <widget class="QPushButton" name="expandFiles">
+        <property name="enabled">
+         <bool>true</bool>
+        </property>
+        <property name="text">
+         <string>Expand selected files</string>
+        </property>
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+       </widget>
+      </item>
+
       <item>
        <widget class="QDialogButtonBox" name="buttonBox">
         <property name="sizePolicy">
@@ -64,6 +82,7 @@
         </property>
        </widget>
       </item>
+
      </layout>
     </widget>
    </item>

@@ -18,6 +18,7 @@ try:
   QFileSystemModel = PySide.QtGui.QFileSystemModel
   QHeaderView = PySide.QtGui.QHeaderView
   QTreeView = PySide.QtGui.QTreeView
+  QPushButton = PySide.QtGui.QPushButton
 
   pysideVersion = PySide.__version__
 except:
@@ -31,6 +32,7 @@ except:
   QFileSystemModel = PySide2.QtWidgets.QFileSystemModel
   QHeaderView = PySide2.QtWidgets.QHeaderView
   QTreeView = PySide2.QtWidgets.QTreeView
+  QPushButton = PySide2.QtWidgets.QPushButton
 
   pysideVersion = PySide2.__version__
 
@@ -134,10 +136,22 @@ class CheckableDirModel(QFileSystemModel):
       else:
         return QtCore.Qt.Unchecked
 
+  @staticmethod
+  def listDirectory(dirname):
+    """Returns list of full paths to files and dirs in the given dir.
+    Replaces '\' (backslash) and '\\' (double backslash) with '/' (slash)
+    in returned paths to unify the path notation.
+    """
+    full_names = glob.glob(os.path.join(dirname, '*'))
+    for idx in range(len(full_names)):
+      full_names[idx] = full_names[idx].replace('\\\\', '/')
+      full_names[idx] = full_names[idx].replace('\\', '/')
+    return full_names
+
   def _setStatusSideways(self, filename, status):
     """Check all files on the same hierarchy level.
     """
-    full_names = glob.glob(os.path.join(os.path.dirname(filename), '*'))
+    full_names = self.listDirectory(os.path.dirname(filename))
     for full_name in full_names:
       self.files[full_name] = status
 
@@ -147,7 +161,7 @@ class CheckableDirModel(QFileSystemModel):
     dirname = os.path.dirname(filename)
     if dirname == filename or not dirname:
       return
-    full_names = glob.glob(os.path.join(dirname, '*'))
+    full_names = self.listDirectory(dirname)
 
     num_checked = 0
     num_unchecked = 0
@@ -170,7 +184,7 @@ class CheckableDirModel(QFileSystemModel):
     """
     if not filename in self.files or not os.path.isdir(filename):
       return
-    full_names = glob.glob(os.path.join(filename, '*'))
+    full_names = self.listDirectory(filename)
     for full_name in full_names:
       if full_name in self.files:
         del self.files[full_name]
@@ -225,13 +239,25 @@ class FileSelectDialog(object):
     button_box.accepted.connect(self.accepted)
     button_box.rejected.connect(self.rejected)
 
+    expand_files_button = self.dialog.findChild(QPushButton, 'expandFiles')
+    expand_files_button.clicked.connect(self.expand_files)
+
+  def expand_files(self):
+    selected_files = self.model.get_selected_files()
+    for filename in selected_files:
+      index = self.model.index(filename)
+      parent = index.parent()
+      while parent.isValid():
+        self.model.tree_view.expand(parent)
+        parent = parent.parent()
+
   @staticmethod
   def get_extra_assets(new_project_name):
     expanded_files = []
     def expand_selected_files(selected_files, expanded_files):
       for filename in selected_files:
         if os.path.isdir(filename):
-          expand_selected_files(glob.glob(os.path.join(filename, '*')), expanded_files)
+          expand_selected_files(CheckableDirModel.listDirectory(filename), expanded_files)
         else:
           expanded_files.append(filename)
     selected_files = Settings.get().get_aux_files(new_project_name)
