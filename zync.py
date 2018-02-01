@@ -425,6 +425,7 @@ class HTTPBackend(object):
       data = {}
     if not headers:
       headers = {}
+    HTTPBackend._validate_request_data_characters(data)
     http = self.__get_http()
     headers = self.set_cookie(headers=headers)
     headers['X-Zync-Header'] = '1'
@@ -449,6 +450,14 @@ class HTTPBackend(object):
     else:
       raise ZyncError('%s: %s: %s' % (url.split('?')[0], resp['status'], content))
 
+  @staticmethod
+  def _validate_request_data_characters(data):
+    """Validates that all values in the given dictionary can be encoded in ascii"""
+    for key, value in data.iteritems():
+      try:
+        str(value)
+      except UnicodeEncodeError:
+        raise ZyncError("Found illegal character in '%s'" % value)
 
 class Zync(HTTPBackend):
   """
