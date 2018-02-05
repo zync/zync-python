@@ -5,7 +5,7 @@ A Python wrapper around the Zync HTTP API.
 """
 
 
-__version__ = '1.5.1'
+__version__ = '1.5.2'
 
 
 import argparse
@@ -425,6 +425,7 @@ class HTTPBackend(object):
       data = {}
     if not headers:
       headers = {}
+    self._validate_request_data_characters(data)
     http = self.__get_http()
     headers = self.set_cookie(headers=headers)
     headers['X-Zync-Header'] = '1'
@@ -448,6 +449,21 @@ class HTTPBackend(object):
       raise ZyncAuthenticationError(content)
     else:
       raise ZyncError('%s: %s: %s' % (url.split('?')[0], resp['status'], content))
+
+  def _validate_request_data_characters(self, data):
+    """Validates that all values in the given dictionary can be encoded in ascii.
+
+      If invalid characters are found a ZyncError is thrown.
+    Args:
+      - data: dict - request data
+    """
+    for key, value in data.iteritems():
+      try:
+        str(value)
+      except UnicodeEncodeError:
+        raise ZyncError(
+            "Found illegal character in '%s'. Only ASCII charset is supported."
+            % value)
 
 
 class Zync(HTTPBackend):
