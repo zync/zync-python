@@ -5,7 +5,7 @@ A Python wrapper around the Zync HTTP API.
 """
 
 
-__version__ = '1.5.2'
+__version__ = '1.5.3'
 
 
 import argparse
@@ -1013,9 +1013,6 @@ class NukeJob(Job):
   Encapsulates Nuke-specific Job functions.
   """
   def __init__(self, *args, **kwargs):
-    #
-    #   Just run Job.__init__(), and set the job_type.
-    #
     super(NukeJob, self).__init__(*args, **kwargs)
     self.job_type = 'nuke'
 
@@ -1032,24 +1029,22 @@ class NukeJob(Job):
 
     * chunk_size: The number of frames to render per task.
 
+    * scene_info: Dict of information about the Nuke script.
+        Required keys:
+        - nuke_version: The full version of Nuke in use, e.g. 'Nuke11.0v4'
+
     step: The frame step, i.e. a step of 1 will render every frame,
         a step of 2 will render every other frame. Setting step > 1
         will cause chunk_size to be set to 1. Defaults to 1.
 
     """
-    #
-    #   Build default params, and update them with what's been passed
-    #   in.
-    #
     data = {}
     data['job_type'] = 'nuke'
     data['write_node'] = write_name
     data['file_path'] = script_path
     if params:
       data.update(params)
-    #
-    #   Fire Job.submit() to submit the job.
-    #
+
     return super(NukeJob, self).submit(data)
 
 
