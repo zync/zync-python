@@ -36,9 +36,8 @@ except:
 
   pysideVersion = PySide2.__version__
 
-import xml.etree.ElementTree as ElementTree
 
-from cStringIO import StringIO
+import dialog_helper
 
 from settings import Settings
 
@@ -202,7 +201,7 @@ class FileSelectDialog(object):
     self.settings = Settings.get()
     self.project_name = project_name
 
-    FormClass = _load_ui_type(UI_SELECT_FILES)
+    FormClass = dialog_helper.load_ui_type(UI_SELECT_FILES)
     form_class = FormClass()
     self.dialog = QDialog()
     self.parent_qt_window = parent
@@ -287,23 +286,4 @@ class FileSelectDialog(object):
   def exec_(self):
     self.dialog.exec_()
 
-
-def _load_ui_type(filename):
-  """Loads and parses ui file created by Qt Designer"""
-  xml = ElementTree.parse(filename)
-  # pylint: disable=no-member
-  form_class = xml.find('class').text
-
-  with open(filename, 'r') as ui_file:
-    output_stream = StringIO()
-    frame = {}
-
-    pysideuic.compileUi(ui_file, output_stream, indent=0)
-    compiled = compile(output_stream.getvalue(), '<string>', 'exec')
-    # pylint: disable=exec-used
-    exec compiled in frame
-
-    form_class = frame['Ui_%s'%form_class]
-
-  return form_class
 

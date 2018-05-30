@@ -5,7 +5,7 @@ A Python wrapper around the Zync HTTP API.
 """
 
 
-__version__ = '1.5.3'
+__version__ = '1.5.5'
 
 
 import argparse
@@ -19,8 +19,10 @@ import select
 import SocketServer
 import sys
 import time
+
 from urllib import urlencode
 from distutils.version import StrictVersion
+
 
 # Workaround for certain versions of embedded python that don't have argv in sys
 # module. The lack of argv in sys manifests in an error in Oauth library:
@@ -107,16 +109,20 @@ if os.environ.get('ZYNC_URL'):
   ZYNC_URL = os.environ.get('ZYNC_URL')
 else:
   # FIXME: maintained for backwards compatibility
-  config_path = os.path.join(current_dir, 'config.py')
+  config_path = os.path.join(current_dir, 'zync_config.py')
   if not os.path.exists(config_path):
-    raise ZyncError('Could not locate config.py, please create.')
-  from config import *
+    raise ZyncError('''
+Could not locate zync_config.py.
+If you use client application for installing plugins select 'Update plugins' in 'Plugins' tab.
+If you install Zync plugins manually rename existing config.py file to zync_config.py.
+''')
+  from zync_config import *
 
 required_config = ['ZYNC_URL']
 
 for key in required_config:
   if not key in globals():
-    raise ZyncError('config.py must define a value for %s.' % (key,))
+    raise ZyncError('zync_config.py must define a value for %s.' % (key,))
 
 
 def __get_config_dir():
@@ -156,7 +162,7 @@ class HTTPBackend(object):
       timeout: float, timeout limit for HTTP connection in seconds
       disable_ssl_certificate_validation: bool, if True, will disable SSL
         certificate validation (for Zync integration tests).
-      url: str, URL to the site, defaults to ZYNC_URL in config.py.
+      url: str, URL to the site, defaults to ZYNC_URL in zync_config.py.
       access_token: str, OAuth access token to use for this connection. if not
         provided Zync will perform the proper OAuth flow.
       email: str, email address to use to authentication this connection. used
@@ -483,7 +489,7 @@ class Zync(HTTPBackend):
       application: str, name of the application in use, if any
       disable_ssl_certificate_validation: bool, if True, will disable SSL
         certificate validation (for Zync integration tests).
-      url: str, URL to the site, defaults to ZYNC_URL in config.py.
+      url: str, URL to the site, defaults to ZYNC_URL in zync_config.py.
       access_token: str, OAuth access token to use for this connection. if not
         provided Zync will perform the proper OAuth flow.
       email: str, email address to use to authentication this connection. used
@@ -1440,3 +1446,4 @@ def is_latest_version(versions_to_check, check_zync_python=True):
       # Update is needed
       return False
   return True
+

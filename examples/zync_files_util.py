@@ -6,10 +6,26 @@ a project name when listing files. You can find a list of your created
 projects at https://YOUR_SITE.zync.io/file_browser.
 
 Example usage:
-  Linux/Mac:
-    ./zync_files_util.py project_name list /home/foo
-  Windows:
-    ./zync_files_util.py project_name list D:/Users/Foo/AppData
+  For each use of the tool one has to specify the project name.
+  The project names can be found in web console: 
+     https://your_site.zync.io/account#projects
+  
+  Listing files:
+    To list file use "list" command. The last argument is a path in 
+    the project files tree.
+    Linux/Mac:
+      ./zync_files_util.py project_name list /home/foo
+    Windows:
+      ./zync_files_util.py project_name list D:/Users/Foo/AppData
+    
+  Downloading files:
+    To list file use "download" command. The last argument is 
+    a path in the project files tree.
+    Linux/Mac:
+      ./zync_files_util.py project_name download /home/foo
+    Windows:
+      ./zync_files_util.py project_name download D:/Users/Foo/AppData
+    You can skip confirmation on each file by using --yes flag.
     
 Note: CGS is case sensitive. That means there is a difference between  
  ./zync_files_util.py project_name list D:/Users/Foo/AppData

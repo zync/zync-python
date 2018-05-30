@@ -31,6 +31,13 @@ class Settings(object):
     self._aux_files[project_name] = aux_files
     self._write_aux_files()
 
+  def get_pvm_ack(self):
+    return self._config.get('pvm_ack', False)
+
+  def put_pvm_ack(self, ack):
+    self._config['pvm_ack'] = ack
+    self._write_config()
+
   @staticmethod
   def _read():
     config_dir = Settings._alloc_config_dir()
