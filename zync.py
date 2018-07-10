@@ -5,7 +5,7 @@ A Python wrapper around the Zync HTTP API.
 """
 
 
-__version__ = '1.5.6'
+__version__ = '1.5.8'
 
 
 import argparse
@@ -1050,7 +1050,6 @@ class NukeJob(Job):
     data['file_path'] = script_path
     if params:
       data.update(params)
-
     return super(NukeJob, self).submit(data)
 
 
