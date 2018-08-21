@@ -5,7 +5,7 @@ A Python wrapper around the Zync HTTP API.
 """
 
 
-__version__ = '1.5.8'
+__version__ = '1.5.9'
 
 
 import argparse
@@ -649,6 +649,8 @@ class Zync(HTTPBackend):
       JobSelect = HoudiniJob
     elif job_type == 'c4d':
       JobSelect = C4dJob
+    elif job_type == 'c4d_vray':
+      JobSelect = C4dVrayJob
     elif job_type == '3dsmax':
       JobSelect = ThreeDSMaxJob
     else:
@@ -1387,6 +1389,35 @@ class C4dJob(Job):
     #   Fire Job.submit() to submit the job.
     #
     return super(C4dJob, self).submit(data)
+
+
+class C4dVrayJob(Job):
+  """
+  Encapsulates Cinema 4D Vray specific job functions.
+  """
+  def __init__(self, *args, **kwargs):
+    #
+    #   Just run Job.__init__(), and set the job_type.
+    #
+    super(C4dVrayJob, self).__init__(*args, **kwargs)
+    self.job_type = 'c4d_vray'
+
+  def submit(self, file, params=None):
+    """
+    Submits an Cinema 4D job to ZYNC.
+    """
+    #
+    #   Build default params, and update with what's been passed in.
+    #
+    data = {}
+    data['job_type'] = 'c4d_vray'
+    data['file_path'] = file
+    if params:
+      data.update(params)
+    #
+    #   Fire Job.submit() to submit the job.
+    #
+    return super(C4dVrayJob, self).submit(data)
 
 
 class ThreeDSMaxJob(Job):
