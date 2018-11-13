@@ -5,7 +5,7 @@ A Python wrapper around the Zync HTTP API.
 """
 
 
-__version__ = '1.5.9'
+__version__ = '1.5.11'
 
 
 import argparse
@@ -40,6 +40,8 @@ if not hasattr(sys, 'argv'):
 import zync_lib.httplib2 as httplib2
 import zync_lib.oauth2client as oauth2client
 import zync_lib.requests as requests
+from zync_lib.requests.adapters import HTTPAdapter
+from zync_lib.requests.packages.urllib3.util.retry import Retry
 
 # This is a workaround for a problem that appears on CentOS.
 # The stacktrace the user gets when trying to login with Google to a plugin is this:
@@ -728,7 +730,13 @@ class Zync(HTTPBackend):
   def get_pricing(self):
     url = ('https://zync-dot-cloudpricingcalculator.appspot.com' +
       '/static/data/pricelist.json')
-    return self.request(url, 'GET')
+    with get_requests_session() as session:
+      response = session.get(url)
+    if response.status_code < 400:
+      return response.json()
+    else:
+      raise requests.HTTPError('Failed to get pricing from, {}. {} - {}'.format(
+        url, response.status_code, response.reason))
 
   def get_eulas(self):
     return self.request('%s/api/eulas' % self.url, 'GET', {})
@@ -813,9 +821,16 @@ class Zync(HTTPBackend):
         'field_name': lambda match: 'CP-ZYNC-%s-%s-PREEMPTIBLE' % (match.group(1).upper(), renderer.upper())
       },
       {
-        # K80 GPU based machine
+        # P100 GPU based machine
         'pattern': re.compile(r'^zync-(\d+vcpu-\d+gb) \((\d+) Tesla (.*)\)$'),
         'field_name': lambda match: 'CP-ZYNC-ZYNC-%(cpu)s-%(gpu)sGPU-%(gpu_type)s-%(renderer)s' %
+                              dict(cpu=match.group(1).upper(), gpu=match.group(2),
+                                   gpu_type=match.group(3), renderer=renderer.upper())
+      },
+      {
+        # preemptible P100 GPU based machine
+        'pattern': re.compile(r'^\(PREEMPTIBLE\) zync-(\d+vcpu-\d+gb) \((\d+) Tesla (.*)\)$'),
+        'field_name': lambda match: 'CP-ZYNC-ZYNC-%(cpu)s-%(gpu)sGPU-%(gpu_type)s-%(renderer)s-PREEMPTIBLE' %
                               dict(cpu=match.group(1).upper(), gpu=match.group(2),
                                    gpu_type=match.group(3), renderer=renderer.upper())
       }
@@ -1477,3 +1492,13 @@ def is_latest_version(versions_to_check, check_zync_python=True):
       return False
   return True
 
+def get_requests_session(retries=5, backoff=0.1):
+  """Create a requests.Session with the specified retries and backoff
+
+  Returns:
+    requests.Session
+  """
+  request_session = requests.Session()
+  retry = Retry(total=retries, backoff_factor=backoff)
+  request_session.mount('https://', HTTPAdapter(max_retries=retry))
+  return request_session
