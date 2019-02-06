@@ -5,7 +5,7 @@ A Python wrapper around the Zync HTTP API.
 """
 
 
-__version__ = '1.5.11'
+__version__ = '1.5.12'
 
 
 import argparse
@@ -655,6 +655,10 @@ class Zync(HTTPBackend):
       JobSelect = C4dVrayJob
     elif job_type == '3dsmax':
       JobSelect = ThreeDSMaxJob
+    elif job_type == '3dsmax_vray':
+      JobSelect = ThreeDSMaxVrayJob
+    elif job_type == '3dsmax_arnold':
+      JobSelect = ThreeDSMaxArnoldJob
     else:
       raise ZyncError('Unrecognized job_type "%s".' % (job_type,))
     #
@@ -1462,6 +1466,64 @@ class ThreeDSMaxJob(Job):
     #   Fire Job.submit() to submit the job.
     #
     return super(ThreeDSMaxJob, self).submit(data)
+
+
+class ThreeDSMaxVrayJob(Job):
+  """
+  Encapsulates 3DS Max specific job functions.
+  """
+  def __init__(self, *args, **kwargs):
+    #
+    #   Just run Job.__init__(), and set the job_type.
+    #
+    super(ThreeDSMaxVrayJob, self).__init__(*args, **kwargs)
+    self.job_type = '3dsmax'
+
+  def submit(self, file, params=None):
+    """
+    Submits an 3DS Max V-Ray job to ZYNC.
+    """
+    #
+    #   Build default params, and update with what's been passed in.
+    #
+    data = dict()
+    data['job_type'] = '3dsmax_vray'
+    data['file_path'] = file
+    if params:
+      data.update(params)
+    #
+    #   Fire Job.submit() to submit the job.
+    #
+    return super(ThreeDSMaxVrayJob, self).submit(data)
+
+
+class ThreeDSMaxArnoldJob(Job):
+  """
+  Encapsulates 3DS Max specific job functions.
+  """
+  def __init__(self, *args, **kwargs):
+    #
+    #   Just run Job.__init__(), and set the job_type.
+    #
+    super(ThreeDSMaxArnoldJob, self).__init__(*args, **kwargs)
+    self.job_type = '3dsmax'
+
+  def submit(self, file, params=None):
+    """
+    Submits an 3DS Max Arnold job to ZYNC.
+    """
+    #
+    #   Build default params, and update with what's been passed in.
+    #
+    data = dict()
+    data['job_type'] = '3dsmax_arnold'
+    data['file_path'] = file
+    if params:
+      data.update(params)
+    #
+    #   Fire Job.submit() to submit the job.
+    #
+    return super(ThreeDSMaxArnoldJob, self).submit(data)
 
 
 def is_latest_version(versions_to_check, check_zync_python=True):
