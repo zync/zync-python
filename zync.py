@@ -5,7 +5,7 @@ A Python wrapper around the Zync HTTP API.
 """
 
 
-__version__ = '1.5.12'
+__version__ = '1.5.13'
 
 
 import argparse
@@ -355,10 +355,11 @@ class HTTPBackend(object):
       self.access_token = credentials.access_token
       userinfo = json.loads(self.__google_api('plus/v1/people/me'))
       primary_email = None
-      for email in userinfo['emails']:
-        if email['type'] == 'account':
-          primary_email = email['value']
-          break
+      for email in userinfo.get('emails', []):
+        if email.get('type', 'account') == 'account':
+          primary_email = email.get('value')
+          if primary_email:
+            break
       if not primary_email:
         self.access_token = None
         raise ZyncAuthenticationError('Could not locate user email address. ' +
