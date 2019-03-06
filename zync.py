@@ -5,7 +5,7 @@ A Python wrapper around the Zync HTTP API.
 """
 
 
-__version__ = '1.5.13'
+__version__ = '1.5.14'
 
 
 import argparse
@@ -149,7 +149,8 @@ def __get_config_dir():
 CLIENT_SECRET = os.path.join(current_dir, 'client_secret.json')
 OAUTH2_STORAGE = os.path.join(__get_config_dir(), 'oauth2.dat')
 OAUTH2_SCOPES = ['https://www.googleapis.com/auth/userinfo.profile',
-                 'https://www.googleapis.com/auth/userinfo.email']
+                 'https://www.googleapis.com/auth/userinfo.email',
+                 'openid email profile']
 
 
 class HTTPBackend(object):
@@ -353,20 +354,34 @@ class HTTPBackend(object):
         credentials = oauth2client.tools.run_flow(flow, storage, flags, http=self.__get_http())
       credentials.refresh(self.__get_http())
       self.access_token = credentials.access_token
-      userinfo = json.loads(self.__google_api('plus/v1/people/me'))
-      primary_email = None
-      for email in userinfo.get('emails', []):
-        if email.get('type', 'account') == 'account':
-          primary_email = email.get('value')
-          if primary_email:
-            break
+      primary_email = self._get_user_email()
       if not primary_email:
         self.access_token = None
-        raise ZyncAuthenticationError('Could not locate user email address. ' +
-          'Emails found: %s' % str(userinfo['emails']))
+        raise ZyncAuthenticationError('Could not locate user email address')
       cookie = self._auth_with_zync(credentials.access_token, primary_email)
       self._save_oauth_credentials(credentials.access_token, primary_email, cookie)
       return primary_email
+
+  def _get_user_email(self):
+    http = self.__get_http()
+    headers = {'Authorization': 'OAuth %s' % self.access_token}
+
+    discovery_url = 'https://accounts.google.com/.well-known/openid-configuration'
+    resp, content = http.request(discovery_url, 'GET', headers=headers)
+    if resp.status != 200:
+      raise ZyncError(content)
+
+    openid_info = json.loads(content)
+
+    userinfo_url = openid_info.get('userinfo_endpoint')
+    if not userinfo_url:
+      raise ZyncError("userinfo endpoint was not found in Google's discovery document")
+
+    resp, content = http.request(userinfo_url, 'GET', headers=headers)
+    if resp.status != 200:
+      raise ZyncError(content)
+
+    return json.loads(content).get('email')
 
   def _save_oauth_credentials(self, access_token, email, cookie):
     """Saves credentials for oauth authentication.
