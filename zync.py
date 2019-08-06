@@ -5,7 +5,7 @@ A Python wrapper around the Zync HTTP API.
 """
 
 
-__version__ = '1.5.14'
+__version__ = '1.5.16'
 
 
 import argparse
@@ -525,7 +525,6 @@ class Zync(HTTPBackend):
     self.INSTANCE_TYPES = self.get_instance_types()
     self.FEATURES = self.get_enabled_features()
     self.JOB_SUBTYPES = self.get_job_subtypes()
-    self.MAYA_RENDERERS = self.get_maya_renderers()
     self.PRICING = self.get_pricing()
 
   def get_config(self, var=None):
@@ -603,13 +602,6 @@ class Zync(HTTPBackend):
     other subtypes like Texture Baking, etc.
     """
     url = '%s/api/job_subtypes' % (self.url,)
-    return self.request(url, 'GET')
-
-  def get_maya_renderers(self):
-    """
-    Get a list of Maya renderers available to your site.
-    """
-    url = '%s/api/maya_renderers' % (self.url,)
     return self.request(url, 'GET')
 
   def get_project_list(self):
@@ -1026,6 +1018,7 @@ class Job(object):
     data['num_instances'] = 1
     data['skip_check'] = 0
     data['notify_complete'] = 0
+    data['num_tiles'] = 1
     data['job_subtype'] = 'render'
     #
     #   Update data with any passed in params.
@@ -1114,9 +1107,6 @@ class MayaJob(Job):
     * yres: The output image y resolution.
 
     * chunk_size: The number of frames to render per task.
-
-    * renderer: The renderer to use. A list of available renderers
-        can be retrieved with Zync.get_maya_renderers().
 
     * out_path: The path to which output frames will be downloaded to.
         Use a local path as it appears to you.
