@@ -5,7 +5,7 @@ A Python wrapper around the Zync HTTP API.
 """
 
 
-__version__ = '1.5.16'
+__version__ = '1.5.17'
 
 
 import argparse
@@ -13,12 +13,15 @@ import errno
 import hashlib
 import json
 import os
+import platform
 import random
 import re
 import select
 import SocketServer
 import sys
 import time
+import traceback
+
 
 from urllib import urlencode
 from distutils.version import StrictVersion
@@ -40,8 +43,11 @@ if not hasattr(sys, 'argv'):
 import zync_lib.httplib2 as httplib2
 import zync_lib.oauth2client as oauth2client
 import zync_lib.requests as requests
+import zync_lib.yaml as yaml
 from zync_lib.requests.adapters import HTTPAdapter
 from zync_lib.requests.packages.urllib3.util.retry import Retry
+from zync_lib.yaml.constructor import SafeConstructor
+
 
 # This is a workaround for a problem that appears on CentOS.
 # The stacktrace the user gets when trying to login with Google to a plugin is this:
@@ -151,6 +157,52 @@ OAUTH2_STORAGE = os.path.join(__get_config_dir(), 'oauth2.dat')
 OAUTH2_SCOPES = ['https://www.googleapis.com/auth/userinfo.profile',
                  'https://www.googleapis.com/auth/userinfo.email',
                  'openid email profile']
+
+OCIO_MAP_TAG_NAMES = ["ColorSpace", "ExponentTransform", "FileTransform",
+                      "GroupTransform", "LogTransform", "Look", "LookTransform",
+                      "TruelightTransform", "View", "ColorSpaceTransform",
+                      "CDLTransform", "MatrixTransform", ]
+
+
+def get_ocio_files(config_file):
+  """Return list of dependencies for the given OCIO config file. Note the file
+  itself is also returned.
+
+  :param config_file: str, absolute path to the OCIO config file to parse.
+  :rtype: list(str), absolute paths of the dependencies.
+  """
+  config_file_path = os.path.abspath(config_file)
+  result = [config_file_path]
+  try:
+    with open(config_file_path) as yaml_file:
+      yaml_lines = yaml_file.readlines()
+    yaml_text = ''.join(yaml_lines)
+
+    for ocio_map_tag_name in OCIO_MAP_TAG_NAMES:
+      SafeConstructor.add_constructor(ocio_map_tag_name, SafeConstructor.construct_yaml_map)
+    parsed_config = yaml.safe_load(yaml_text)
+
+    separator = ';' if platform.system() == 'Windows' else ':'
+    search_paths = parsed_config['search_path'].split(separator)
+    for search_path in search_paths:
+      if not os.path.exists(search_path):
+        # It might be relative path - try prepending the config file path.
+        search_path = os.path.join(os.path.dirname(config_file_path), search_path)
+
+      if os.path.isdir(search_path) and os.path.exists(search_path):
+        for root, directories, files in os.walk(search_path):
+          for file in files:
+            result.append(os.path.join(root, file))
+
+    return result
+
+  except:
+    # Do not fail on exception here. OCIO is a complex format and parsing errors are
+    # possible. User can work around the problem by manually adding OCIO dependencies
+    # to the job and failing here would make such a workaround impossible.
+    print("Error parsing %s:\n" % config_file)
+    traceback.print_exc()
+    return result
 
 
 class HTTPBackend(object):
@@ -697,12 +749,12 @@ class Zync(HTTPBackend):
             e.g.
             [
               {
-               "url": "#", 
-               "rel": "projects/balls3/usr/local", 
+               "url": "#",
+               "rel": "projects/balls3/usr/local",
                "is_folder": true,
                "name": "local"
                "children": {
-                   "url": "#", 
+                   "url": "#",
                    "rel": "projects/balls3/usr/local/foo.txt",
                    "name": "foo.txt"
                   }
