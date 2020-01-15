@@ -64,10 +64,10 @@ class DefaultThreadPool(ThreadPool, thread_synchronization.ThreadSynchronization
   """
   Runs interruptible tasks in multiple threads.
 
-  :param int | None concurrency_level: How many threads to run in parallel. It will use CPU count
-                                       if not specified.
-  :param (str, BaseException, str) -> None | None: Optional callback for error handling. Arguments
-                                                   are: task name, exception, traceback string.
+  :param Optional[int] concurrency_level: How many threads to run in parallel. It will use CPU count
+                                          if not specified.
+  :param Optional[(str, BaseException, str) -> None]: Optional callback for error handling. Arguments
+                                                      are: task name, exception, traceback string.
   """
 
   def __init__(self, concurrency_level=None, error_handler=None):
@@ -100,10 +100,13 @@ class DefaultThreadPool(ThreadPool, thread_synchronization.ThreadSynchronization
 
   def _run_task(self, task):
     try:
-      task.run_task()
+      if task.is_interrupted:
+        task.on_cancelled()
+      else:
+        task.run()
     except BaseException as err:
       if self._error_handler:
-        self._error_handler(task.name, err, traceback.format_exc())
+        self._error_handler(task.task_name, err, traceback.format_exc())
     finally:
       self._remove_task(task)
 
@@ -115,7 +118,7 @@ class DefaultThreadPool(ThreadPool, thread_synchronization.ThreadSynchronization
     """
     Creates a lock appropriate to use with threads running in this thread pool.
 
-    :return threading.Lock:
+    :return DefaultLock:
     """
     return DefaultLock()
 
@@ -126,7 +129,7 @@ class DefaultThreadPool(ThreadPool, thread_synchronization.ThreadSynchronization
     :param Lock lock: A lock with which the wait condition will be associated, must be created
                       using `create_lock` method of this thread pool. If lock is not specified,
                       it will be created by the thread pool.
-    :return threading.Condition:
+    :return DefaultWaitCondition:
     """
     if lock is None:
       lock = self.create_lock()

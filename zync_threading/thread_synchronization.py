@@ -129,7 +129,7 @@ class ThreadSynchronizationFactory(object):
     Creates a wait condition.
 
     :param Lock lock: The lock that will be used by wait condition. If None, new lock will be
-                      created using create_lock method.
+                              created using create_lock method.
     :return WaitCondition:
     """
     raise NotImplementedError()

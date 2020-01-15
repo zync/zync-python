@@ -1,8 +1,7 @@
 """ Contains implementation of asynchronous calls. """
 from functools import wraps, partial
 
-from background_task import BackgroundTask
-from interruptible_task import TaskInterruptedException
+from base_interruptible_task import BaseInterruptibleTask
 
 
 class AsyncCaller(object):
@@ -11,12 +10,9 @@ class AsyncCaller(object):
 
   :param thread_pool.ThreadPool thread_pool:
   :param thread_synchronization.Lock lock:
-  :param main_thread_executor.MainThreadExecutor main_thread_executor:
   """
-  def __init__(self, thread_pool, lock, main_thread_executor):
-    super(AsyncCaller, self).__init__()
+  def __init__(self, thread_pool, lock):
     self._thread_pool = thread_pool
-    self._main_thread_executor = main_thread_executor
     self._async_tasks = set()
     self._async_tasks_lock = lock
 
@@ -24,11 +20,13 @@ class AsyncCaller(object):
     """
     Schedules asynchronous call to func in the background.
 
-    Optional on_success and on_error callbacks are executed in the main thread.
+    Optional on_success and on_error callbacks are executed on the background thread, so they need
+    to be marked as running on the main thread explicitly if required.
 
     :param () -> object func: Function to be executed asynchronously.
-    :param Optional[(object) -> None] on_success: (Optional) Called when func returns without raising
-                                                  exceptions. The return value is passed to this callback.
+    :param Optional[(object) -> None] on_success: (Optional) Called when func returns without
+                                                  raising exceptions. The return value is passed to
+                                                  this callback.
     :param Optional[(BaseException) -> None] on_error: (Optional) Called when func raises an exception.
                                                        The exception is passed to this callback.
     :param Optional[str] name: (Optional) Sets the name of the task that will execute this call. Name
@@ -36,21 +34,21 @@ class AsyncCaller(object):
     :return interruptible_task.InterruptibleTask:
     """
     outer = self
-    class _AsyncTask(BackgroundTask):
+    class _AsyncTask(BaseInterruptibleTask):
       def __init__(self):
-        super(_AsyncTask, self).__init__(outer._main_thread_executor, name=name)
+        BaseInterruptibleTask.__init__(self, name)
 
       def run(self):
         """ Executes func and calls back either on_success or on_error. """
         try:
+          self.check_interrupted()
           result = func()
           if on_success:
-            self.run_on_main_thread(partial(on_success, result))
-        except TaskInterruptedException:
-          pass
+            self.check_interrupted()
+            on_success(result)
         except BaseException as err:
           if on_error:
-            self.run_on_main_thread(partial(on_error, err))
+            on_error(err)
           else:
             raise
         finally:
@@ -77,7 +75,8 @@ class AsyncCaller(object):
     Arguments of the decorator should be methods, they will be bound to `self` of the wrapped method.
     Static methods are not supported.
 
-    Optional on_success and on_error callbacks are executed in the main thread.
+    Optional on_success and on_error callbacks are executed on the background thread, so they need
+    to be marked as running on the main thread explicitly if required.
 
     :param Optional[(object) -> None] on_success: (Optional) Called when func returns without raising
                                                   exceptions. The return value is passed to this callback.

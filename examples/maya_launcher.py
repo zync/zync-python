@@ -99,7 +99,7 @@ params = {
     #
     #   ignore_plugin_errors = Whether to ignore missing plugin errors.
     #
-    'ignore_plugin_errors': 0
+    'ignore_plugin_errors': 0,
     #
     #   distributed = Whether to use Distribute Rendering. Only currently available
     #                 for Vray.

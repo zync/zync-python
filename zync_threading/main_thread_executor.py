@@ -1,13 +1,15 @@
 """ Contains implementation of MainThreadExecutor. """
-
+import threading
 from main_thread_action import MainThreadAction
 
 
 class MainThreadExecutor(object):
   """
-  Queues and executes MainThreadActions.
+  Queues and executes MainThreadActions on the main thread.
 
-  :param thread_synchronization.ThreadSynchronizationFactory thread_synchronization_factory:
+  Main thread is the thread which creates this object.
+
+  :param thread_synchronization.AbstractThreadSynchronizationFactory thread_synchronization_factory:
   :param () -> None on_action_submitted: Optional callback called whenever new main thread action is added.
   :param () -> None on_actions_pending: Optional callback called after executing an action in the main thread
                                         when more actions are pending.
@@ -19,24 +21,51 @@ class MainThreadExecutor(object):
     self._on_action_submitted = on_action_submitted
     self._on_actions_pending = on_actions_pending
     self._action_queue = []
+    self._main_thread_ident = threading.current_thread().ident
     self._action_queue_lock = thread_synchronization_factory.create_lock()
 
-  def run_on_main_thread(self, task, func):
+  def _in_main_thread(self):
+    return self._main_thread_ident == threading.current_thread().ident
+
+  @staticmethod
+  def _do_nothing():
+    # Used as noop check_interrupted to simplify code.
+    pass
+
+  def run_on_main_thread(self, func, check_interrupted=None):
     """
     Runs func in the main thread and returns the result. If func raises an exception in the main
     thread, it will be caught and reraised in the calling thread.
 
-    :param interruptible_task.InterruptibleTask task:
-    :param () -> object func:
+    This method is reentrant.
+
+    If check_interrupted is specified, this method will call it before executing the function
+    and periodically while waiting for the result. It is expected that check_interrupted raises
+    TaskInterruptedException when the execution of func should be interrupted.
+
+    :param () -> object func: Function to execute on the main thread.
+    :param Optional[() -> None] check_interrupted: Callback that can interrupt execution.
     :return object:
     :raises:
       TaskInterruptedException: if task is interrupted during the execution.
     """
-    if not task.is_interrupted:
-      action_result = self._submit_and_wait(task, func)
-      return action_result.result
+    if self._in_main_thread():
+      return self._execute_no_wait(func, check_interrupted if check_interrupted else self._do_nothing)
     else:
-      task.raise_interrupted_exception()
+      return self._execute_and_wait(func, check_interrupted if check_interrupted else self._do_nothing)
+
+  @staticmethod
+  def _execute_no_wait(func, check_interrupted):
+    check_interrupted()
+    action_result = MainThreadAction(func).execute()
+    check_interrupted()
+    return action_result.result
+
+  def _execute_and_wait(self, func, check_interrupted):
+    check_interrupted()
+    action_result = self._submit_and_wait(check_interrupted, func)
+    check_interrupted()
+    return action_result.result
 
   def size(self):
     """
@@ -46,7 +75,7 @@ class MainThreadExecutor(object):
     """
     return len(self._action_queue)
 
-  def _submit_and_wait(self, task, func):
+  def _submit_and_wait(self, check_interrupted, func):
     """
     Waits for and returns an action result.
 
@@ -62,14 +91,12 @@ class MainThreadExecutor(object):
 
     with action_context.wait_condition:
       with self._action_queue_lock:
-        self._action_queue.append(MainThreadAction(_submit_result, func))
+        self._action_queue.append(MainThreadAction(func, _submit_result))
       self._maybe_call_hook(self._on_action_submitted)
       while not action_context.result_submitted:
-        if task.is_interrupted:
-          task.raise_interrupted_exception()
-        action_context.wait_condition.wait(MainThreadExecutor.WAIT_CONDITION_TIMEOUT_SECONDS)
-      if task.is_interrupted:
-        task.raise_interrupted_exception()
+        check_interrupted()
+        action_context.wait_condition.wait(timeout=MainThreadExecutor.WAIT_CONDITION_TIMEOUT_SECONDS)
+        check_interrupted()
       return action_context.result
 
   class _ActionContext(object):

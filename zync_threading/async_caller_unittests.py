@@ -1,16 +1,16 @@
 """ Integration tests for async_task module. """
-from unittest import TestCase
-from threading import current_thread
+from unittest import TestCase, main
 
 from async_caller import AsyncCaller
+from base_interruptible_task import BaseInterruptibleTask
 from default_thread_pool import DefaultThreadPool
+from main_thread_caller import MainThreadCaller
 from main_thread_executor import MainThreadExecutor
 from test_utils import CountDownLatch
-from zync_threading import BackgroundTask
 
 
 class TestAsyncCaller(TestCase):
-  def test_should_execute_success_callback_in_the_main_thread(self):
+  def test_should_execute_success_callback(self):
     # given
     test_results = []
 
@@ -18,19 +18,18 @@ class TestAsyncCaller(TestCase):
       return 'async result'
 
     def _success_handler(result):
-      test_results.append((result, current_thread().ident))
+      test_results.append(result)
 
     thread_pool = DefaultThreadPool()
-    main_thread_executor = MainThreadExecutor(thread_pool)
-    async_caller = AsyncCaller(thread_pool, thread_pool.create_lock(), main_thread_executor)
+    async_caller = AsyncCaller(thread_pool, thread_pool.create_lock())
 
     # when
     async_caller.start_async_call(_async_func, _success_handler)
     while thread_pool.has_tasks():
-      main_thread_executor.maybe_execute_action()
+      pass
 
     # then
-    self.assertEqual([('async result', current_thread().ident)], test_results)
+    self.assertEqual(['async result'], test_results)
 
   def test_should_execute_error_callback_in_the_main_thread(self):
     # given
@@ -40,19 +39,18 @@ class TestAsyncCaller(TestCase):
       raise RuntimeError('async error')
 
     def _error_handler(err):
-      test_results.append((str(err), current_thread().ident))
+      test_results.append(str(err))
 
     thread_pool = DefaultThreadPool()
-    main_thread_executor = MainThreadExecutor(thread_pool)
-    async_caller = AsyncCaller(thread_pool, thread_pool.create_lock(), main_thread_executor)
+    async_caller = AsyncCaller(thread_pool, thread_pool.create_lock())
 
     # when
     async_caller.start_async_call(_async_func, on_error=_error_handler)
     while thread_pool.has_tasks():
-      main_thread_executor.maybe_execute_action()
+      pass
 
     # then
-    self.assertEqual([('async error',  current_thread().ident)], test_results)
+    self.assertEqual(['async error'], test_results)
 
   def test_should_interrupt_all_async_tasks_and_no_other_tasks(self):
     # given
@@ -60,9 +58,10 @@ class TestAsyncCaller(TestCase):
     thread_pool = DefaultThreadPool(concurrency_level=4)
     latch = CountDownLatch(thread_pool.create_wait_condition())
 
-    class _TestTask(BackgroundTask):
+    class _TestTask(BaseInterruptibleTask, MainThreadCaller):
       def __init__(self, executor):
-        super(_TestTask, self).__init__(executor)
+        BaseInterruptibleTask.__init__(self)
+        MainThreadCaller.__init__(self, executor)
 
       def run(self):
         """ Submit results. """
@@ -78,7 +77,7 @@ class TestAsyncCaller(TestCase):
       test_results.append(result)
 
     main_thread_executor = MainThreadExecutor(thread_pool)
-    async_caller = AsyncCaller(thread_pool, thread_pool.create_lock(), main_thread_executor)
+    async_caller = AsyncCaller(thread_pool, thread_pool.create_lock())
     thread_pool.add_task(_TestTask(main_thread_executor))
 
     # when
@@ -92,3 +91,7 @@ class TestAsyncCaller(TestCase):
 
     # then
     self.assertEqual(['test task', 'test task'], test_results)
+
+
+if __name__ == '__main__':
+  main()

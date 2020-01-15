@@ -1,6 +1,6 @@
 """ Unit tests for main_thread_action module. """
 
-from unittest import TestCase
+from unittest import TestCase, main
 from main_thread_action import MainThreadActionResult, MainThreadAction
 
 class TestActionResult(TestCase):
@@ -64,7 +64,7 @@ class TestActionResult(TestCase):
 class TestAction(TestCase):
   def test_should_return_action_result_with_call_result(self):
     # given
-    action = MainThreadAction(None, lambda: 13)
+    action = MainThreadAction(lambda: 13)
 
     # when
     action_result = action.execute()
@@ -76,7 +76,7 @@ class TestAction(TestCase):
     # given
     def _raise_syntax_error():
       raise SyntaxError('call error')
-    action = MainThreadAction(None, _raise_syntax_error)
+    action = MainThreadAction(_raise_syntax_error)
 
     # when
     action_result = action.execute()
@@ -93,10 +93,14 @@ class TestAction(TestCase):
     def _submit_result(result):
       submitted_results.append(result)
 
-    action = MainThreadAction(_submit_result, lambda: 23)
+    action = MainThreadAction(lambda: 23, _submit_result)
 
     # when
     action.execute_and_submit()
 
     # then
     self.assertEqual([23], [action_result.result for action_result in submitted_results])
+
+
+if __name__ == '__main__':
+  main()

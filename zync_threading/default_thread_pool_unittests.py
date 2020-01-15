@@ -2,18 +2,18 @@
 Unit tests for default_thread_pool module.
 """
 
-from unittest import TestCase
+from unittest import TestCase, main
+from base_interruptible_task import BaseInterruptibleTask
 from default_thread_pool import DefaultThreadPool
-from interruptible_task import InterruptibleTask
 from test_utils import CountDownLatch
 import thread_synchronization
 
 class TestDefaultThreadPool(TestCase):
   def test_should_run_4_parallel_tasks(self):
     # given
-    class _TestTask(InterruptibleTask):
+    class _TestTask(BaseInterruptibleTask):
       def __init__(self, counter, order, num_threads, iterations, results):
-        super(_TestTask, self).__init__()
+        BaseInterruptibleTask.__init__(self)
         self._counter = counter
         self._order = order
         self._num_threads = num_threads
@@ -45,14 +45,18 @@ class TestDefaultThreadPool(TestCase):
 
   def test_should_not_start_interrupted_task(self):
     # given
-    class _TestTask(InterruptibleTask):
+    class _TestTask(BaseInterruptibleTask):
       def __init__(self, results):
-        super(_TestTask, self).__init__()
+        BaseInterruptibleTask.__init__(self)
         self._results = results
 
       def run(self):
-        """ Append a number to results """
+        """ Appends a number to results. """
         self._results.append(13)
+
+      def on_cancelled(self):
+        """ Appends a number to results. """
+        self._results.append(14)
 
     test_results = []
     task = _TestTask(test_results)
@@ -65,17 +69,17 @@ class TestDefaultThreadPool(TestCase):
       pass
 
     # then
-    self.assertEqual([], test_results)
+    self.assertEqual([14], test_results)
 
   def test_should_create_lock_and_wait_condition(self):
     # given
     errors = []
-    def _error_handler(exception, traceback):
-      errors.append((str(exception), traceback))
+    def _error_handler(task_name, exception, traceback):
+      errors.append((task_name, str(exception), traceback))
 
-    class _TestTask(InterruptibleTask):
+    class _TestTask(BaseInterruptibleTask):
       def __init__(self, wait_first, results, wait_condition, latch):
-        super(_TestTask, self).__init__(error_handler=_error_handler)
+        BaseInterruptibleTask.__init__(self)
         self._wait_first = wait_first
         self._results = results
         self._wait_condition = wait_condition
@@ -101,7 +105,7 @@ class TestDefaultThreadPool(TestCase):
           self._wait_condition.notify_all()
           self._results.append((self._wait_first, 'notify'))
 
-    test_thread_pool = DefaultThreadPool(concurrency_level=2)
+    test_thread_pool = DefaultThreadPool(concurrency_level=2, error_handler=_error_handler)
     test_latch = CountDownLatch(test_thread_pool.create_wait_condition())
     test_results = []
     test_lock = test_thread_pool.create_lock()
@@ -118,98 +122,31 @@ class TestDefaultThreadPool(TestCase):
     self.assertEqual([(True, 'wait'), (False, 'notify'), (True, 'wakeup')], test_results)
 
 
-  def test_should_call_task_error_handler_and_not_pool_error_handler(self):
-    # given
-    task_result = dict()
-    pool_result = dict()
-
-    def _task_error_handler(exception, traceback):
-      task_result['exception'] = str(exception)
-      task_result['traceback'] = traceback
-
-    def _pool_error_handler(_name, exception, traceback):
-      pool_result['exception'] = exception
-      pool_result['traceback'] = traceback
-
-    class _TestTask(InterruptibleTask):
-      def __init__(self):
-        super(_TestTask, self).__init__(error_handler=_task_error_handler)
-
-      def run(self):
-        """ Raises an exception """
-        raise RuntimeError('test error')
-
-    thread_pool = DefaultThreadPool(error_handler=_pool_error_handler)
-
-    # when
-    thread_pool.add_task(_TestTask())
-    while thread_pool.has_tasks():
-      pass
-
-    # then
-    self.assertEqual(dict(), pool_result)
-    self.assertEqual('test error', task_result['exception'])
-    self.assertTrue(len(task_result['traceback']) > 0)
-
   def test_should_call_pool_error_handler_and_task_error_handler(self):
     # given
-    task_results = []
     pool_results = []
-
-    def _task_error_handler(exception, _traceback):
-      task_results.append(str(exception))
 
     def _pool_error_handler(task_name, exception, _traceback):
       pool_results.append((task_name, str(exception)))
 
-    class _TestTask(InterruptibleTask):
-      def __init__(self, name, error_handler=None):
-        super(_TestTask, self).__init__(name=name, error_handler=error_handler)
+    class _TestTask(BaseInterruptibleTask):
+      def __init__(self, name):
+        BaseInterruptibleTask.__init__(self, name=name)
 
       def run(self):
         """ Raises an exception """
-        raise RuntimeError(self.name + ' test error')
+        raise RuntimeError(self.task_name + ' test error')
 
     thread_pool = DefaultThreadPool(error_handler=_pool_error_handler)
 
     # when
-    thread_pool.add_task(_TestTask('task1', _task_error_handler))
+    thread_pool.add_task(_TestTask('task1'))
     thread_pool.add_task(_TestTask('task2'))
     while thread_pool.has_tasks():
       pass
 
     # then
-    self.assertEqual(['task1 test error'], task_results)
     self.assertTrue(('task2', 'task2 test error') in pool_results)
-
-  def test_should_handle_exception_in_task_error_handler(self):
-    # given
-    pool_results = {}
-
-    def _task_error_handler(_exception, _traceback):
-      raise RuntimeError('faulty handler')
-
-    def _pool_error_handler(task_name, exception, traceback):
-      pool_results[str(exception)] = (task_name, traceback)
-
-    class _TestTask(InterruptibleTask):
-      def __init__(self):
-        super(_TestTask, self).__init__(name='test task', error_handler=_task_error_handler)
-
-      def run(self):
-        """ Raise an exception """
-        raise RuntimeError('task error')
-
-    thread_pool = DefaultThreadPool(error_handler=_pool_error_handler)
-
-    # when
-    thread_pool.add_task(_TestTask())
-    while thread_pool.has_tasks():
-      pass
-
-    # then
-    self.assertEqual('test task', pool_results['faulty handler'][0])
-    self.assertTrue(len(pool_results['faulty handler'][1]) > 0)
 
 
 class TestSynchronizationPrimitives(TestCase):
@@ -218,3 +155,6 @@ class TestSynchronizationPrimitives(TestCase):
 
   def test_default_condition_should_be_subclass_of_zync_threading_wait_condition(self):
     self.assertTrue(isinstance(DefaultThreadPool().create_wait_condition(), thread_synchronization.WaitCondition))
+
+if __name__ == '__main__':
+  main()

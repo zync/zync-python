@@ -2,9 +2,10 @@
 
 class CountDownLatch(object):
   """
-  Implements count down latch using ThreadPool primitives.
+  Implements count down latch.
 
-  :param thread_pool.WaitCondition wait_condition:
+  :param thread_synchronization.WaitCondition wait_condition:
+  :param int count:
   """
   def __init__(self, wait_condition, count=1):
     self._count = count

@@ -5,7 +5,7 @@ A Python wrapper around the Zync HTTP API.
 """
 
 
-__version__ = '1.6.0'
+__version__ = '1.6.2'
 
 
 import argparse
@@ -512,7 +512,11 @@ class HTTPBackend(object):
     else:
       if 'Content-Type' not in headers:
         headers['Content-Type'] = 'application/x-www-form-urlencoded'
-      resp, content = http.request(url, operation, urlencode(data), headers=headers)
+      if headers['Content-Type'] == 'application/json':
+        serialized_data = json.dumps(data)
+      else:
+        serialized_data = urlencode(data)
+      resp, content = http.request(url, operation, serialized_data, headers=headers)
     if resp['status'] == '200':
       try:
         return json.loads(content)
@@ -585,10 +589,10 @@ class Zync(HTTPBackend):
     get a specific value, or leave it out to get all values.
     """
     url = '%s/api/config' % self.url
-    if var != None:
+    if var is not None:
       url += '/%s' % var
     result = self.request(url, 'GET')
-    if var == None:
+    if var is None:
       return result
     elif var in result:
       return result[var]
@@ -910,6 +914,23 @@ class Zync(HTTPBackend):
             'us' in self.PRICING['gcp_price_list'][field_name]):
       return float(self.PRICING['gcp_price_list'][field_name]['us'])
     return None
+
+  def check_software(self, software_spec):
+    """Returns software version that will be used by zync to render the provided versions.
+
+    Example of software_spec:
+      {'host': {'name': 'maya', 'version': '2018'}, 'plugins': [{'name':
+      'vray','version': '3.6'}]}
+    Args:
+      software_spec: dict, has to contain host and optionally a list of plugins.
+    Returns: (bool, str), whether th software is supported and a pretty name of
+      package that will be used.
+    """
+    url = '%s/api/software_versions:check' % self.url
+    data = software_spec
+    headers = {'Content-Type': 'application/json'}
+    result = self.request(url, 'POST', data, headers=headers)
+    return result['supported'], result['pretty_name']
 
 
 class Job(object):

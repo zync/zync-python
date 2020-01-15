@@ -1,8 +1,5 @@
-"""
-Contains the base class for interruptible tasks.
-"""
-import traceback
-from abc import ABCMeta, abstractmethod
+""" Contains InterruptibleTask interface.  """
+from abc import ABCMeta, abstractmethod, abstractproperty
 
 
 class TaskInterruptedException(Exception):
@@ -12,72 +9,53 @@ class TaskInterruptedException(Exception):
 
 
 class InterruptibleTask(object):
-  """
-  Base interruptible task class.
-
-  :param str | None name: (Optional) Name of the task. Passed to thread pool error handler to help
-                          find the error causes.
-  :param (BaseException, str) -> None | None error_handler: (Optional) Called when exception is raised
-                                                            in the run method. The exception and
-                                                            traceback are passed to this callback.
-  """
+  """ Interface for tasks that can be interrupted. """
 
   __metaclass__ = ABCMeta
 
-  def __init__(self, name=None, error_handler=None):
-    self._name = name if name else 'Task %s' % id(self)
-    self._error_handler = error_handler
-    self._interrupted = False
-
-  def raise_interrupted_exception(self):
+  @abstractmethod
+  def check_interrupted(self):
     """
-    Raises a TaskInterruptedException with task-specific message.
+    If task is interrupted, raises TaskInterruptedException. If it is not interrupted, does nothing.
 
     :raises:
-      TaskInterruptedException: Always.
+      TaskInterruptedException: If task is interrupted.
     """
-    msg = 'Task %s was terminated due to external event.' % self.name
-    raise TaskInterruptedException(msg)
+    raise NotImplementedError()
 
-  @property
-  def name(self):
+  @abstractproperty
+  def task_name(self):
     """
     Gets the name of the task.
+
     :return str:
     """
-    return self._name
+    raise NotImplementedError()
 
+  @abstractmethod
   def interrupt(self):
-    """
-    Marks the task as interrupted.
-    """
-    self._interrupted = True
+    """ Marks the task as interrupted. """
+    raise NotImplementedError()
 
-  @property
+  @abstractproperty
   def is_interrupted(self):
     """
     Gets the interruption status of the task.
 
     :return bool:
     """
-    return self._interrupted
+    raise NotImplementedError()
 
-  def run_task(self):
+  @abstractmethod
+  def on_cancelled(self):
     """
-    Runs the task and handles errors.
+    Called by the thread pool on a task that was interrupted before starting.
     """
-    try:
-      if not self.is_interrupted:
-        self.run()
-    except BaseException as err:
-      if self._error_handler:
-        self._error_handler(err, traceback.format_exc())
-      else:
-        raise
+    raise NotImplementedError()
 
   @abstractmethod
   def run(self):
     """
-    To be implemented by subclasses.
+    Actual workload of the task.
     """
     raise NotImplementedError()

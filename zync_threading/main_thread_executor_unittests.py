@@ -1,22 +1,40 @@
 """ Unit tests for main_thread_executor module. """
-from unittest import TestCase
+from unittest import TestCase, main
 from threading import current_thread
 from collections import defaultdict
 
-from background_task import BackgroundTask
 from default_thread_pool import DefaultThreadPool
+from main_thread_caller import InterruptibleMainThreadCaller
 from main_thread_executor import MainThreadExecutor
 from test_utils import CountDownLatch
 
 
 class TestMainThreadExecutor(TestCase):
+  def test_should_not_block_when_called_from_the_main_thread(self):
+    # given
+    results = []
+    executor = MainThreadExecutor(DefaultThreadPool())
+
+    def _test_func1(x):
+      results.append(x)
+
+    def _test_func2():
+      results.append(1)
+      _test_func1(2)
+
+    # when
+    executor.run_on_main_thread(_test_func2)
+
+    # then
+    self.assertEqual([1, 2], results)
+
   def test_should_run_parallel_tasks_and_part_of_work_in_main_thread(self):
     # given
     main_thread = current_thread().ident
 
-    class _TestTask(BackgroundTask):
+    class _TestTask(InterruptibleMainThreadCaller):
       def __init__(self, executor, results, latch):
-        super(_TestTask, self).__init__(executor)
+        InterruptibleMainThreadCaller.__init__(self, executor)
         self._results = results
         self._latch = latch
 
@@ -29,9 +47,15 @@ class TestMainThreadExecutor(TestCase):
         self._results.append((3, main_thread == current_thread().ident))
         self._append_4()
 
-      @BackgroundTask.main_thread
+      @InterruptibleMainThreadCaller.main_thread
       def _append_4(self):
         self._results.append((4, main_thread == current_thread().ident))
+        # this call tests if executor is reentrant
+        self._append_5()
+
+      @InterruptibleMainThreadCaller.main_thread
+      def _append_5(self):
+        self._results.append((5, main_thread == current_thread().ident))
 
     test_results = defaultdict(list)
 
@@ -47,7 +71,7 @@ class TestMainThreadExecutor(TestCase):
       main_thread_executor.maybe_execute_action()
 
     # then
-    expected_task_result = [(1, False), (2, True), (3, False), (4, True)]
+    expected_task_result = [(1, False), (2, True), (3, False), (4, True), (5, True)]
     expected = defaultdict(list, {
       'task0':expected_task_result,
       'task1':expected_task_result,
@@ -63,9 +87,9 @@ class TestMainThreadExecutor(TestCase):
     latch1 = CountDownLatch(thread_pool.create_wait_condition(), 2)
     latch2 = CountDownLatch(thread_pool.create_wait_condition(), 2)
 
-    class _TestTask(BackgroundTask):
+    class _TestTask(InterruptibleMainThreadCaller):
       def __init__(self, executor):
-        super(_TestTask, self).__init__(executor)
+        InterruptibleMainThreadCaller.__init__(self, executor)
 
       def run(self):
         """ Does work in the main thread """
@@ -101,3 +125,6 @@ class TestMainThreadExecutor(TestCase):
 
     # then
     self.assertEqual(['submit','submit','pending','submit','submit', 'pending'], callback_results)
+
+if __name__ == '__main__':
+  main()
