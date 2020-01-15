@@ -269,7 +269,10 @@ class NotRunningAppEngineEnvironment(HttpLib2Error):
 # requesting that URI again.
 DEFAULT_MAX_REDIRECTS = 5
 
-from httplib2 import certs
+try:
+    from httplib2 import certs
+except ImportError:
+    import certs
 CA_CERTS = certs.where()
 
 # Which headers are hop-by-hop headers by default
