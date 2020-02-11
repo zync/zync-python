@@ -21,7 +21,7 @@ class TestAsyncCaller(TestCase):
       test_results.append(result)
 
     thread_pool = DefaultThreadPool()
-    async_caller = AsyncCaller(thread_pool, thread_pool.create_lock())
+    async_caller = AsyncCaller(thread_pool, thread_pool)
 
     # when
     async_caller.start_async_call(_async_func, _success_handler)
@@ -38,11 +38,11 @@ class TestAsyncCaller(TestCase):
     def _async_func():
       raise RuntimeError('async error')
 
-    def _error_handler(err):
+    def _error_handler(err, _traceback):
       test_results.append(str(err))
 
     thread_pool = DefaultThreadPool()
-    async_caller = AsyncCaller(thread_pool, thread_pool.create_lock())
+    async_caller = AsyncCaller(thread_pool, thread_pool)
 
     # when
     async_caller.start_async_call(_async_func, on_error=_error_handler)
@@ -77,7 +77,7 @@ class TestAsyncCaller(TestCase):
       test_results.append(result)
 
     main_thread_executor = MainThreadExecutor(thread_pool)
-    async_caller = AsyncCaller(thread_pool, thread_pool.create_lock())
+    async_caller = AsyncCaller(thread_pool, thread_pool)
     thread_pool.add_task(_TestTask(main_thread_executor))
 
     # when

@@ -14,3 +14,14 @@ class ThreadPool(object):
     :param interruptible_task.InterruptibleTask task:
     """
     raise NotImplementedError()
+
+  @abstractmethod
+  def shutdown(self, wait):
+    """
+    Stops accepting new tasks.
+
+    If wait is True, it waits for running tasks to finish.
+
+    :param bool wait:
+    """
+    raise NotImplementedError()

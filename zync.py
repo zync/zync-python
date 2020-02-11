@@ -5,7 +5,7 @@ A Python wrapper around the Zync HTTP API.
 """
 
 
-__version__ = '1.6.3'
+__version__ = '1.6.4'
 
 
 import argparse
@@ -203,6 +203,31 @@ def get_ocio_files(config_file):
     print("Error parsing %s:\n" % config_file)
     traceback.print_exc()
     return result
+
+
+def _encode_obj_utf8(in_obj):
+
+  def encode_list(in_list):
+    out_list = []
+    for el in in_list:
+      out_list.append(_encode_obj_utf8(el))
+    return out_list
+
+  def encode_dict(in_dict):
+    out_dict = {}
+    for k, v in in_dict.iteritems():
+      out_dict[k] = _encode_obj_utf8(v)
+    return out_dict
+
+  if isinstance(in_obj, unicode):
+    return in_obj.encode('utf-8')
+  elif isinstance(in_obj, list):
+    return encode_list(in_obj)
+  elif isinstance(in_obj, tuple):
+    return tuple(encode_list(in_obj))
+  elif isinstance(in_obj, dict):
+    return encode_dict(in_obj)
+  return in_obj
 
 
 class HTTPBackend(object):
@@ -501,13 +526,12 @@ class HTTPBackend(object):
       data = {}
     if not headers:
       headers = {}
-    self._validate_request_data_characters(data)
     http = self.__get_http()
     headers = self.set_cookie(headers=headers)
     headers['X-Zync-Header'] = '1'
     if operation == 'GET':
       if data:
-        url += '?%s' % (urlencode(data),)
+        url += '?%s' % (urlencode(_encode_obj_utf8(data)),)
       resp, content = http.request(url, operation, headers=headers)
     else:
       if 'Content-Type' not in headers:
@@ -515,7 +539,7 @@ class HTTPBackend(object):
       if headers['Content-Type'] == 'application/json':
         serialized_data = json.dumps(data)
       else:
-        serialized_data = urlencode(data)
+        serialized_data = urlencode(_encode_obj_utf8(data))
       resp, content = http.request(url, operation, serialized_data, headers=headers)
     if resp['status'] == '200':
       try:
@@ -529,21 +553,6 @@ class HTTPBackend(object):
       raise ZyncAuthenticationError(content)
     else:
       raise ZyncError('%s: %s: %s' % (url.split('?')[0], resp['status'], content))
-
-  def _validate_request_data_characters(self, data):
-    """Validates that all values in the given dictionary can be encoded in ascii.
-
-      If invalid characters are found a ZyncError is thrown.
-    Args:
-      - data: dict - request data
-    """
-    for key, value in data.iteritems():
-      try:
-        str(value)
-      except UnicodeEncodeError:
-        raise ZyncError(
-            "Found illegal character in '%s'. Only ASCII charset is supported."
-            % value)
 
 
 class Zync(HTTPBackend):
@@ -1059,9 +1068,9 @@ class Job(object):
         #
         for result_item in api_result:
           if preflight_obj['operation_type'] == 'equal' and result_item in preflight_obj['condition']:
-            matches.append( str(result_item) )
+            matches.append( unicode(result_item) )
           elif preflight_obj['operation_type'] == 'not_equal' and result_item not in preflight_obj['condition']:
-            matches.append( str(result_item) )
+            matches.append( unicode(result_item) )
       except Exception as e:
         continue
       #

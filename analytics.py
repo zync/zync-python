@@ -7,12 +7,13 @@ import sys
 import traceback
 from urllib import urlencode
 
-from concurrent.futures import ThreadPoolExecutor
+from zync_threading import BaseInterruptibleTask
+from zync_threading.default_thread_pool import DefaultThreadPool
 from zync import HTTPBackend
 
 TRACKING_ID = 'UA-74927307-3'
 
-executor = ThreadPoolExecutor(max_workers=1)
+thread_pool = DefaultThreadPool(concurrency_level=1)
 
 
 def _post_event(site_code, category, action, label, app, app_version,
@@ -24,7 +25,10 @@ def _post_event(site_code, category, action, label, app, app_version,
       'user-agent': user_agent,
       'content-type': 'application/x-www-form-urlencoded; charset=UTF-8'
   }
-  uid = hashlib.sha256(site_code + '=0w835ohs;e5ut').hexdigest()
+  if site_code:
+    uid = hashlib.sha256(site_code + '=0w835ohs;e5ut').hexdigest()
+  else:
+    uid = 'unknown'
   params = {
       'v': 1,
       't': 'event',
@@ -51,28 +55,49 @@ def _post_event(site_code, category, action, label, app, app_version,
                      (resp.status, content))
 
 
-def _safe_post_event(site_code, category, action, label, app, app_version,
-                     plugin_version):
-  try:
-    _post_event(site_code, category, action, label, app, app_version,
-                plugin_version)
-  except:
-    traceback.print_exc()
+class PostEventTask(BaseInterruptibleTask):
+  """
+  Task that sends events to GA.
+
+  :param str site_code:
+  :param str category: event category
+  :param str action: event action
+  :param str label: event label
+  :param str app: host app like 'maya'
+  :param str app_version: host app version
+  :param str plugin_version:
+  """
+
+  def __init__(self, site_code, category, action, label, app, app_version, plugin_version):
+    super(PostEventTask, self).__init__()
+    self._site_code = site_code
+    self._category = category
+    self._action = action
+    self._label = label
+    self._app = app
+    self._app_version = app_version
+    self._plugin_version = plugin_version
+
+  def run(self):
+    """ Sends event to GA. """
+    try:
+      _post_event(self._site_code, self._category, self._action, self._label, self._app, self._app_version, self._plugin_version)
+    except:
+      traceback.print_exc()
 
 
 def post_event_async(site_code, action, label, app, app_version, plugin_version):
   """
-  Sends events to GA asynchronously.
-  Args:
-    :param str site_code:
-    :param str action: event action
-    :param str label: event label
-    :param str app: host app like 'maya'
-    :param str app_version: host app version
-    :param str plugin_version:
+  Sends event to GA asynchronously.
+
+  :param str site_code:
+  :param str action: event action
+  :param Optional[str] label: event label
+  :param str app: host app like 'maya'
+  :param str app_version: host app version
+  :param str plugin_version:
   """
-  executor.submit(_safe_post_event, site_code, 'plugin', action, label, app,
-                  app_version, plugin_version)
+  thread_pool.add_task(PostEventTask(site_code, 'plugin', action, label, app, app_version, plugin_version))
 
 
 def post_plugin_error_event(site_code,
@@ -155,7 +180,7 @@ def _shorten_path(path):
 
 
 def format_error(error, limit=500):
-  error = str(error)
+  error = unicode(error)
   truncate_left = 'Traceback (most recent call last):' in error
   error = error.replace('Traceback (most recent call last):', '').strip()
 
@@ -188,6 +213,7 @@ def format_error(error, limit=500):
 
 
 def main():
+  """ Entry point. """
   import time
   timestamp = time.time()
 
@@ -202,8 +228,7 @@ def main():
     except Exception:
       post_plugin_error_event(site_code, 'maya', '2018', '1.0.0',
                               traceback.format_exc())
-  executor.shutdown()
-
+  thread_pool.shutdown()
 
 if __name__ == '__main__':
   main()

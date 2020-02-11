@@ -114,6 +114,18 @@ class DefaultThreadPool(ThreadPool, thread_synchronization.ThreadSynchronization
     with self._tasks_lock:
       self._tasks.remove(task)
 
+  def shutdown(self, wait=True):
+    """
+    Stops accepting new tasks.
+
+    If wait is True (default), it waits for running tasks to finish.
+
+    :param bool wait:
+    """
+    self._pool.close()
+    if wait:
+      self._pool.join()
+
   def create_lock(self):
     """
     Creates a lock appropriate to use with threads running in this thread pool.
